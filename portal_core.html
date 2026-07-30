@@ -406,7 +406,8 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 
 /* ── PRINT ── */
 @media print{
-  @page{size:landscape;margin:8mm}
+  @page{size:A4 landscape;margin:8mm}
+  @page reportcard{size:A4 portrait;margin:5mm}
   #sidebar,#main .topbar,.btn,.no-print,#bottom-nav,
   #sb-overlay,.card-sel-bar,.stu-selector{display:none!important}
   #main{margin-left:0!important}
@@ -420,6 +421,21 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   .progress-table{min-width:0!important;width:100%!important;font-size:7.2pt}
   .progress-table th,.progress-table td{padding:3px 4px}
   .progress-table td.progress-name{white-space:normal}
+  #rc-wrap{overflow:visible!important}
+  .report-card{
+    page:reportcard;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+    transform-origin:top left!important;
+  }
+  #rc-wrap>.report-card:not(:last-child){
+    break-after:page;
+    page-break-after:always;
+  }
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 
@@ -3178,6 +3194,35 @@ function printProgress(){
   window.print();
 }
 
+function fitReportCardsToOnePage(){
+  var page=document.getElementById('page-card');
+  if(!page||!page.classList.contains('print-active'))return;
+  var cards=document.querySelectorAll('#rc-wrap > .report-card');
+  if(!cards.length)return;
+
+  var probe=document.createElement('div');
+  probe.style.cssText='position:absolute;visibility:hidden;pointer-events:none;width:198mm;height:284mm';
+  document.body.appendChild(probe);
+  var targetWidth=probe.getBoundingClientRect().width;
+  var targetHeight=probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+
+  cards.forEach(function(card){
+    card.style.zoom='1';
+    var contentWidth=Math.max(card.scrollWidth,1);
+    var contentHeight=Math.max(card.scrollHeight,1);
+    var scale=Math.min(1,targetWidth/contentWidth,targetHeight/contentHeight);
+    card.style.zoom=String(Math.floor(scale*1000)/1000);
+  });
+}
+function resetReportCardPrintFit(){
+  document.querySelectorAll('#rc-wrap > .report-card').forEach(function(card){
+    card.style.zoom='';
+  });
+}
+window.addEventListener('beforeprint',fitReportCardsToOnePage);
+window.addEventListener('afterprint',resetReportCardPrintFit);
+
 // ============================================================
 // RESULT CARD
 // ============================================================
@@ -3303,8 +3348,8 @@ function printAll(){
         allRemarks[s.id]||{},
         pubSet
       );
-    }).join('<div style="page-break-after:always;margin-top:0"></div>');
-    setTimeout(function(){window.print();},400);
+    }).join('');
+    setTimeout(function(){fitReportCardsToOnePage();window.print();},400);
   }).catch(function(e){
     hideLoad();showToast('Failed to load cards','error');
     console.error('printAll error:',e);
@@ -3381,7 +3426,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
-  var h='<div style="background:'+WHITE+';max-width:800px;font-family:Segoe UI,Tahoma,sans-serif;font-size:9pt;border-top:7px solid '+NAVY+';'+P+'">';
+  var h='<div class="report-card" style="background:'+WHITE+';max-width:800px;font-family:Segoe UI,Tahoma,sans-serif;font-size:9pt;border-top:7px solid '+NAVY+';'+P+'">';
 
   // HEADER
   if(sec.showHeader){
