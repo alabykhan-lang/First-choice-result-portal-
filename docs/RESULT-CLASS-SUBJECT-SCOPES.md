@@ -24,9 +24,14 @@ allows authorised management to:
 4. assign a whole-class scope or an individual subject scope;
 5. review active/revoked assignments and revoke an existing assignment.
 
-The write path is `school_access_management_scope_write_api`; the read path is
-`school_access_management_scope_read_api`. The existing management permission
-and identity checks remain required. Assignment actions are audited.
+The Central Registry browser now sends scope reads and writes through its
+same-origin management route, backed by the session-native adapters
+`school_access_management_scope_read_session_api` and
+`school_access_management_scope_write_session_api`. The adapters validate the
+HttpOnly Central Registry session and explicit management permission before
+reading or changing any assignment. The older client-code adapters remain only
+as a compatibility fallback for sessions that have not completed the secure
+cookie exchange. Assignment actions are audited.
 
 ## Enforcement
 
@@ -48,3 +53,4 @@ subject marks automatically.
 If no applicable assignment exists, the Result path denies the request and the
 portal displays: **No class or subject has been assigned to this account.**
 Names are never used to infer scope.
+

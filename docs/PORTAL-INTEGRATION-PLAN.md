@@ -17,9 +17,9 @@ repositories, using iframes or implementing SSO redirects.
 - Central-auth Result reads and writes now pass through the protected Result
   route; legacy compatibility mode remains isolated and is not an SSO contract.
 - Central Registry has a context-aware Result scope UI, audited credential
-  activation/recovery and an HttpOnly session exchange foundation. Its older
-  access-management RPCs remain transitional until session-native adapters are
-  complete.
+  activation/recovery and an HttpOnly session exchange foundation. Result scope
+  and credential management now use session-native routes; older module, role
+  and identity-read RPCs remain transitional.
 
 ## Future module navigation
 
@@ -34,8 +34,8 @@ for every sensitive cross-origin endpoint.
 ## Recommended order
 
 1. Complete Result protected-read parity, remaining legacy migration and RLS.
-2. Complete Central Registry session-native management adapters and verify
-   credential recovery and real Result scope
+2. Complete Central Registry session-native module, role and identity-read
+   management adapters, then verify credential recovery and real Result scope
    assignments.
 3. Integrate Results into the Workspace through a short-lived authorization
    code handoff, preferably PKCE-bound and server exchanged.
@@ -43,3 +43,4 @@ for every sensitive cross-origin endpoint.
 5. Complete separate Attendance and Notification operational/security reviews.
 6. Extend the contract to those systems only after their identity mappings and
    provider/device flows are proven.
+

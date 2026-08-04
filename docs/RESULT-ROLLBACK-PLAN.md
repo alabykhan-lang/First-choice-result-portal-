@@ -11,6 +11,7 @@ The additive database migrations are:
 - `result_api_grants_and_scope_management`
 - `identity_credential_management_adapter`
 - `central_session_cookie_adapters`
+- `central_management_session_adapters`
 - `scope_privilege_cleanup`
 
 ## Application rollback
@@ -47,3 +48,4 @@ Check that the Result home page, class loading, score reads, existing report-car
 generation and production data counts match the pre-release baseline. Run the
 unauthenticated contract tests and confirm that no new session or audit rows
 were created by the test run.
+

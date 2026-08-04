@@ -13,9 +13,11 @@ setup. These are real production states, not test records.
 
 ## Protected management action
 
-The Central Registry access screen and School Platform System Administration
-call the existing audited temporary-credential routine through protected server
-adapters. Management must provide a reason. The routine:
+The Central Registry access screen calls a same-origin management route that
+uses the HttpOnly Central Registry session and the session-native
+`school_identity_management_session_write_api` adapter. The legacy browser
+credential-write RPC is no longer executable by `anon`. Management must
+provide a reason. The routine:
 
 - generates a one-time temporary password in server/database memory;
 - stores only the bcrypt hash;
@@ -39,3 +41,4 @@ Positive activation was not performed against a real account during this
 non-destructive release verification because it would change a production
 credential. The endpoint contract, negative authorization behavior, migration
 privileges and no-data-change checks were verified.
+
