@@ -8,9 +8,12 @@
   complete for all real staff accounts.
 - [ ] Every active Results user has exactly one verified central person mapping.
 - [ ] Management has assigned real class and subject scopes where required.
-- [ ] Protected Result reads have parity tests for students, scores, traits,
-  fees, remarks and published subjects.
-- [ ] Report-card generation and export perform server-side action checks.
+- [ ] Protected Result reads have completed parity tests for students, scores,
+  traits, fees, remarks and published subjects.
+- [x] Report-card generation and export perform server-side action checks before
+  protected central-auth rendering/download workflows.
+- [ ] Central Registry management RPCs have completed migration from the
+  transitional attendance-admin-client session to session-native adapters.
 - [ ] Remaining legacy writes and unrestricted Data API reads are migrated or
   protected by tested RLS policies.
 - [ ] Attendance and Notification are not included in the SSO rollout until
@@ -28,7 +31,7 @@ Future hosts are expected to be:
 - `attendance.waytosuccessschools.com`
 - `notify.waytosuccessschools.com`
 
-The Result cookie is currently host-only and does not cross these hosts. A
+The Result and Central Registry cookies are currently host-only and do not cross these hosts. A
 shared parent-domain cookie must not be introduced until its scope, theft
 impact, `Secure`, `HttpOnly`, `SameSite` and CSRF controls are reviewed. API
 routes must use explicit Origin allowlists; wildcard credentialed CORS is not

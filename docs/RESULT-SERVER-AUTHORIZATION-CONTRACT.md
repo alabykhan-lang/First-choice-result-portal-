@@ -1,6 +1,6 @@
 # Result Server Authorization Contract
 
-**Status:** Phase 1 implementation, no cross-origin SSO redirects
+**Status:** Phase 2 central-auth data boundary, no cross-origin SSO redirects
 
 This contract is the server-side boundary for the Result Portal. The browser may
 request an operation, but the browser role, hidden controls, cached user object
@@ -59,6 +59,9 @@ legacy `admin` string.
 - `school_result_identity_resolve`
 - `school_result_authorize`
 - `school_result_api`
+- `school_result_read_api`
+- `school_result_traits_update`
+- `school_result_remarks_update`
 - `school_result_fees_update`
 - `school_result_app_config_update`
 - `school_result_settings_read`
@@ -76,6 +79,16 @@ account is inactive; the Results grant is absent or revoked; the Result user
 mapping is missing or ambiguous; or a required class or subject scope is not
 active. A teacher with no real scope assignment receives a restricted denial;
 the system does not grant all classes by default.
+
+## Protected data boundary
+
+Central-auth browser reads for students, classes, subjects, scores, traits,
+remarks, fees, published subjects, summaries and report-card source data use
+`school_result_read_api`. Central-auth trait and remark writes use their narrow
+adapters rather than the generic browser upsert helper. Report-card generation
+and exports perform explicit action checks before data is rendered or
+downloaded. The complete resource matrix is in
+`RESULT-PROTECTED-DATA-ACCESS.md`.
 
 ## Transitional behavior
 

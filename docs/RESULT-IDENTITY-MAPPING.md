@@ -56,6 +56,9 @@ the server uses permissions and scopes for decisions.
 ## Scope checks
 
 Teacher-style actions require active `school_staff_access_scopes` rows for the
-requested class and subject. The current live scope table has no assigned rows,
-so non-management staff are intentionally restricted until management assigns
-real scopes. No broad teacher access was invented.
+requested class and, for subject-result actions, subject. New assignments carry
+the real academic session and term in the existing metadata column and are
+managed through the Central Registry access screen. The current live scope
+table has no assigned rows, so non-management staff are intentionally
+restricted until management assigns real scopes. No broad teacher access was
+invented.

@@ -34,7 +34,40 @@ module.exports = async function resultData(req, res) {
 
   const action = body.action.trim();
   const requestPayload = body.payload && typeof body.payload === 'object' ? body.payload : {};
-  const payload = action === 'fees.update'
+  const payload = action.startsWith('read.')
+    ? await supabaseRpc('school_result_read_api', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+        p_resource: action.slice('read.'.length),
+        p_payload: requestPayload,
+      })
+    : action === 'traits.enter'
+      ? await supabaseRpc('school_result_traits_update', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+        p_student_id: requestPayload.student_id || null,
+        p_class_key: requestPayload.class_key || null,
+        p_term: requestPayload.term || null,
+        p_academic_session: requestPayload.academic_session || null,
+        p_trait_type: requestPayload.trait_type || null,
+        p_trait_name: requestPayload.trait_name || null,
+        p_rating: requestPayload.rating === '' || requestPayload.rating === undefined ? null : requestPayload.rating,
+      })
+      : action === 'remarks.enter'
+        ? await supabaseRpc('school_result_remarks_update', {
+          p_session_id: session.sessionId,
+          p_session_secret: session.sessionSecret,
+          p_student_id: requestPayload.student_id || null,
+          p_class_key: requestPayload.class_key || null,
+          p_term: requestPayload.term || null,
+          p_academic_session: requestPayload.academic_session || null,
+          p_academic: requestPayload.academic ?? null,
+          p_form_master: requestPayload.form_master ?? null,
+          p_principal: requestPayload.principal ?? null,
+          p_days_opened: requestPayload.days_opened === '' || requestPayload.days_opened === undefined ? null : requestPayload.days_opened,
+          p_days_present: requestPayload.days_present === '' || requestPayload.days_present === undefined ? null : requestPayload.days_present,
+        })
+        : action === 'fees.update'
     ? await supabaseRpc('school_result_fees_update', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,

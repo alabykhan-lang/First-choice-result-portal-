@@ -8,6 +8,18 @@
   fields; raw session secrets are hashed in the database.
 - Added server-side permission and class/subject scope authorization.
 - Added protected server routes for login, logout and Result actions.
+- Added protected Result read adapters for students, classes, subjects, scores,
+  traits, remarks, fees, published subjects, summaries and report-card source
+  data.
+- Added explicit report-card generation and export authorization checks before
+  protected browser rendering/download workflows.
+- Added context-aware class/subject assignment adapters and management UI in
+  Central Registry.
+- Added Central Registry credential activation/recovery UI using the existing
+  audited temporary-credential routine.
+- Added a server-side Central Registry session exchange foundation using the
+  Phase 1 session table and an HttpOnly cookie; legacy admin RPC compatibility
+  remains until session-native management adapters are complete.
 - Routed central-session role administration, invite rotation, publishing,
   score, trait, remark, fee, student and app-config writes through protected
   RPCs.
@@ -28,12 +40,13 @@ tests before anonymous table writes can be revoked:
 - the legacy display session object remains in `localStorage` for compatibility,
   but it is no longer accepted as a central session and offline fallback is
   removed;
-- Result reads for students, scores, traits, fees, remarks and published
-  subjects still use the public Supabase Data API;
-- legacy-mode score, trait, remark, fee, student and settings writes still use
-  the existing browser path for production compatibility;
-- report-card construction, printing and some exports remain client-side and
-  need protected read adapters plus action checks;
+- legacy-mode reads and score, trait, remark, fee, student and settings writes
+  still use the existing browser path for production compatibility;
+- report-card markup and calculations remain client-side after protected reads;
+  server-side action authorization is present, but a server-rendered report
+  artifact is not yet implemented;
+- Central Registry module/role management still uses its existing transitional
+  admin-client RPC session while the new HttpOnly session exchange is prepared;
 - the legacy provider-key workflow remains separate from the central protected
   configuration path and must be redesigned before provider secrets are
   browser-available.
@@ -43,13 +56,13 @@ tables have live operational traffic and need protected-read parity first.
 
 ## Next migration sequence
 
-1. Add protected Result read adapters for each existing query shape and compare
-   response parity without changing data.
-2. Move report-card generation and export reads behind `report_cards.generate`
-   and `results.export` checks.
-3. Add real class and subject scope assignments through Central Registry and
+1. Complete parity coverage for each protected Result read shape without
+   changing data.
+2. Move remaining legacy Result reads and writes behind the same adapters.
+3. Complete session-native Central Registry management adapters.
+4. Add real class and subject scope assignments through Central Registry and
    verify denial for unassigned teachers.
-4. Switch all central and then legacy-compatible writes to server routes.
-5. Revoke remaining direct table writes and enable RLS with policy tests.
-6. Remove legacy password/localStorage compatibility only after recovery and
+5. Switch all central and then legacy-compatible writes to server routes.
+6. Revoke remaining direct table writes and enable RLS with policy tests.
+7. Remove legacy password/localStorage compatibility only after recovery and
    central credential readiness are proven.

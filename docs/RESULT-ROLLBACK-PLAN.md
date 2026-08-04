@@ -1,8 +1,17 @@
 # Result Rollback Plan
 
-This phase adds authorization functions, a session table and application routes.
-It does not copy, transform or delete Result records and creates no sample
-records.
+This phase adds authorization functions, context-aware scope adapters, a
+credential-management adapter, a session-cookie exchange route and Result
+application routes. It does not copy, transform or delete Result records and
+creates no sample records.
+
+The additive database migrations are:
+
+- `result_protected_reads_scopes_and_session_revocation`
+- `result_api_grants_and_scope_management`
+- `identity_credential_management_adapter`
+- `central_session_cookie_adapters`
+- `scope_privilege_cleanup`
 
 ## Application rollback
 
@@ -28,6 +37,9 @@ records.
 - Never hard-delete Result users or students as part of rollback. User removal
   remains a Central Registry deprovisioning operation; student removal remains
   an archive operation in the protected path.
+- If the Central Registry frontend is rolled back, revoke any newly issued
+  session rows through the existing session revocation path; do not expose the
+  cookie secret or restore browser trust of roles.
 
 ## Verification after rollback
 
