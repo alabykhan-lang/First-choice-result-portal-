@@ -12,14 +12,23 @@
   traits, fees, remarks and published subjects.
 - [x] Report-card generation and export perform server-side action checks before
   protected central-auth rendering/download workflows.
-- [ ] Central Registry management RPCs have completed migration from the
+- [x] Central Registry management RPCs have completed migration from the
   transitional attendance-admin-client session to session-native adapters.
-- [ ] Remaining legacy writes and unrestricted Data API reads are migrated or
+- [x] Remaining legacy writes and unrestricted Data API reads are migrated or
   protected by tested RLS policies.
 - [ ] Attendance and Notification are not included in the SSO rollout until
   their own identity and provider readiness reviews are complete.
 - [ ] Logout, grant revocation, staff suspension and session revocation have
   cross-application tests.
+
+## Current gate result
+
+The Result Portal is **not yet ready for PKCE SSO**. Automated boundary and RLS
+checks pass, but the real authorised super-administrator workflow has not yet
+been completed in a controlled browser session, and the live Result scope
+table has no real class or subject assignments. No assignment is created by
+this phase; management must assign only real operational scopes before teacher
+workflow verification.
 
 ## URL and browser requirements
 

@@ -1,6 +1,6 @@
 # Result Protected Data Access
 
-**Status:** Protected data boundary preserved; Phase 3/RLS/PKCE work paused
+**Status:** Phase 3 protected data boundary, no PKCE SSO
 
 ## Request boundary
 
@@ -32,9 +32,13 @@ Central-auth writes use these server-side actions:
 - `fees.update` -> `school_result_fees_update`
 - `students.upsert` and `students.archive` -> `school_result_api`
 - `results.publish` -> `school_result_api`
+- `results.unpublish` -> `school_result_api` with a separate permission check
 - `settings.app_config.update` -> `school_result_app_config_update`
 - `settings.read` -> `school_result_settings_read`
-- Result administration actions -> `school_result_api`
+- `result_settings.manage` -> protected settings adapters
+- Result account and scope administration -> Central Registry session-native
+  management adapters; the Result portal does not write `user_profiles` or
+  `invite_codes`.
 
 Writes validate academic session and term where applicable, check student/class
 membership, enforce numeric ranges and record Result audit events. Student
@@ -52,18 +56,11 @@ The database remains the source of truth for protected reads.
 
 ## Compatibility boundary
 
-The normal Result Portal has one official WTS login. Its legacy tabs,
-self-registration and first-password setup are not public. A missing or
-expired central HttpOnly session cannot be replaced by a browser-local
-`localStorage` session. Direct Data API helpers fail closed unless the active
-central session is present.
-
-For a narrowly scoped operational recovery, the old compatibility handler is
-reachable only through `GET /api/result-emergency`. The server validates the
-central Result session and the caller's Central Registry management grant,
-audits the use and returns a short transitional window. This route is not
-linked from the normal login screen and cannot create an account or set a first
-password.
+The Result Portal legacy login, browser password values, localStorage session
+fallback, direct Data API operations and browser role/invite administration are
+retired. Retained database compatibility code is protected by the server
+boundary, deny-by-default RLS and legacy mutation guards. A protected request
+without the central HttpOnly session is rejected.
 
 Report-card and analytics calculations remain client-side after protected source
 reads. Provider-key/OCR processing requires future server-side provider
@@ -72,3 +69,6 @@ configuration before it can be enabled.
 The nine Result tables are rolled out with deny-by-default RLS migrations in
 the shared Central Registry repository. The RLS matrix and rollback reference
 are recorded in `RESULT-RLS-ROLLOUT.md` and the Central Registry rollback file.
+
+The former transitional Result emergency gate has been retired from the shared
+database. It cannot restore legacy Result access or bypass WTS Staff Login.

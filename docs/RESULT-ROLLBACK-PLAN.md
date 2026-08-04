@@ -23,6 +23,8 @@ The additive database migrations are:
 - `result_rls_fees`
 - `result_rls_students`
 - `scope_privilege_cleanup`
+- `result_boundary_hardening` (permission catalog additions, exact permission
+  checks, legacy mutation guards and the session-native workspace adapter)
 
 ## Application rollback
 
@@ -43,6 +45,12 @@ The reviewed table-level RLS rollback reference is maintained at
 used for the affected table after confirming the protected deployment is
 stopped. It is not a normal compatibility path and must not restore unrestricted
 browser authority.
+
+The final boundary rollback reference is
+`central-registry/supabase/rollback/RESULT-BOUNDARY-HARDENING-ROLLBACK.sql`.
+It removes only the new session adapter/guards and unused catalog definitions
+after dependency checks; it intentionally does not restore legacy browser
+credentials, role mutation, invite rotation or direct Data API access.
 
 - Do not drop `school_identity_sessions` or the new functions as an immediate
   reaction. Existing active sessions must first be expired or revoked through a

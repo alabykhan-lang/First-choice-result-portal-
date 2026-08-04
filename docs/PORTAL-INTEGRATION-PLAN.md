@@ -17,9 +17,13 @@ repositories, using iframes or implementing SSO redirects.
 - Central-auth Result reads and writes now pass through the protected Result
   route; legacy compatibility mode remains isolated and is not an SSO contract.
 - Central Registry has a context-aware Result scope UI, audited credential
-  activation/recovery and an HttpOnly session exchange foundation. Result scope
-  and credential management now use session-native routes; older module, role
-  and identity-read RPCs remain transitional.
+  activation/recovery and session-native management routes. Result scope and
+  credential management use host-only HttpOnly sessions. School Platform
+  workspace sign-in also uses a server-side session cookie and does not store
+  opaque client credentials in browser storage.
+- The Result Portal has no browser role or invite authority. Central Registry is
+  the only management surface for real staff grants, class scopes and subject
+  scopes.
 
 ## Future module navigation
 
@@ -33,10 +37,10 @@ for every sensitive cross-origin endpoint.
 
 ## Recommended order
 
-1. Complete Result protected-read parity, remaining legacy migration and RLS.
-2. Complete Central Registry session-native module, role and identity-read
-   management adapters, then verify credential recovery and real Result scope
-   assignments.
+1. Complete non-destructive Result protected-read parity and real-account
+   workflow verification.
+2. Verify Central Registry credential recovery and make only real Result scope
+   assignments through management approval.
 3. Integrate Results into the Workspace through a short-lived authorization
    code handoff, preferably PKCE-bound and server exchanged.
 4. Audit and harden Registry before making it a target of the same handoff.

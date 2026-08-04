@@ -1,4 +1,4 @@
-# Result Legacy Migration Status
+# Result Legacy Migration Complete
 
 ## Completed
 
@@ -8,10 +8,20 @@
 - The browser no longer sends Result table requests to the Supabase Data API.
 - Legacy database helper names fail closed when called without the central
   session boundary.
+- The prior transitional Result emergency gate was retired from Supabase; it
+  is no longer an authentication or legacy-access authority source.
+- The Result UI no longer exposes Legacy Login, Register, invite rotation or
+  browser role changes. Result account and scope administration is performed
+  in Central Registry.
+- The browser no longer persists Result settings or credential-like values in
+  localStorage. Navigation state in sessionStorage is display state only.
 - Result reads, writes, publishing, report-card authorization and exports use
   protected server actions.
 - The nine high-risk Result tables have individual RLS migrations and reviewed
   rollback SQL in the Central Registry repository.
+- The shared permission catalog now contains the exact Result contract,
+  including `traits.enter`, `results.unpublish`, `result_users.manage` and
+  `result_settings.manage`.
 
 ## Remaining compatibility
 
@@ -20,10 +30,11 @@
   where exposed.
 - Report-card markup, calculations and PDF rendering remain in the browser after
   protected data retrieval.
-- Central Registry student/staff/guardian records still use its transitional
-  client session until equivalent session-native record adapters are complete.
+- Central Registry management and record adapters use the host-only session
+  cookie. School Platform workspace sign-in also uses a server-issued
+  HttpOnly cookie; opaque client credentials are not stored in the browser.
 - Provider-key/OCR processing requires a server-side provider configuration and
   is not enabled from browser storage.
 
-No identity, student, class, score, permission grant or academic record was
-created by this migration.
+No identity, student, class, score, permission grant, scope assignment or
+academic record was created by this migration.

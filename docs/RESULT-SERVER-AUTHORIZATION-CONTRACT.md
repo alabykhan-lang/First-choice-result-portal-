@@ -1,6 +1,6 @@
 # Result Server Authorization Contract
 
-**Status:** Central-auth boundary preserved; Phase 3, RLS and PKCE work paused
+**Status:** Phase 2 central-auth data boundary, no cross-origin SSO redirects
 
 This contract is the server-side boundary for the Result Portal. The browser may
 request an operation, but the browser role, hidden controls, cached user object
@@ -27,28 +27,26 @@ cookie.
 
 | Portal action | Required permission | Scope/context |
 | --- | --- | --- |
-| `admin.users.read` | `users.manage` | active Result grant |
-| `admin.invite.read` | `users.manage` | active Result grant |
-| `admin.role.update` | `users.manage` | central identity remains authoritative |
-| `admin.user.delete` | `users.manage` | hard deletion is rejected; deprovision in Registry |
-| `admin.invite.rotate` | `users.manage` | server-generated code and audit event |
+| Legacy Result account/invite actions | retired | Central Registry is the only staff/grant management surface; retained compatibility calls fail closed |
 | `results.publish` | `results.publish` | academic session, term and class/subject scope |
+| `results.unpublish` | `results.unpublish` | academic session, term and class/subject scope |
 | `scores.enter` | `scores.enter` or canonical result-entry permission | session, term, class and subject |
-| `traits.enter` | `scores.enter` or canonical result-entry permission | session, term, class and subject |
+| `traits.enter` | `traits.enter` | session, term and class scope |
 | `remarks.enter` | `remarks.enter` or canonical result-entry permission | session, term, class and subject |
 | `fees.update` | `results.manage` | active student/class and academic context |
 | `students.upsert` | `results.manage` | server whitelist of mutable fields |
 | `students.archive` | `results.manage` | soft archive; no destructive delete |
-| `settings.read` | active Results grant | sensitive provider key excluded |
-| `settings.app_config.update` | `results.manage` | provider key preserved server-side |
+| `settings.read` | `result_settings.manage` (or explicit broad `results.manage`) | sensitive provider key excluded |
+| `settings.app_config.update` | `result_settings.manage` (or explicit broad `results.manage`) | provider key preserved server-side |
 | `results.review` | `results.review` | class/subject scope when not broad management |
 | `results.approve` | `results.approve` | class/subject scope when not broad management |
 | `report_cards.generate` | `report_cards.generate` | class/subject scope when not broad management |
 | `results.export` | `results.export` | class/subject scope when not broad management |
 
-The requested permission names are mapped to the existing canonical catalog
-names. This phase creates no permission grants and does not infer access from a
-legacy `admin` string.
+The exact Result permission definitions are in the Central Registry catalog.
+This phase creates no permission grants and does not infer access from a
+legacy `admin` or `teacher` string. `results.manage` is an explicit broad
+management grant, not a browser role claim.
 
 ## Database entry points
 
@@ -92,17 +90,7 @@ downloaded. The complete resource matrix is in
 
 ## Transitional behavior
 
-The normal public page exposes one choice only: **WTS Staff Login**. It accepts
-the official WTS email address or staff number and the central WTS password.
-Public legacy login tabs, self-registration and first-password setup are
-removed. The normal client does not restore an access session from
-`localStorage`; a missing, expired or revoked HttpOnly Result session returns
-to the official WTS login.
-
-The old compatibility handler is retained only behind the non-public
-`GET /api/result-emergency` route. That route requires an active Result
-HttpOnly session plus an active Central Registry `access.manage` or
-`registry.manage` grant, records every successful use, shows a transitional
-warning and is time-limited. It does not create accounts, set first passwords
-or bypass central permissions. It is prepared for removal after central
-credential rollout.
+The legacy Result login, first-password setup, self-registration and Result
+browser account administration are retired. Retained database compatibility
+functions are server-only, RLS-protected and guarded against legacy role/invite
+mutation. Direct reads and writes are not an authorization fallback.

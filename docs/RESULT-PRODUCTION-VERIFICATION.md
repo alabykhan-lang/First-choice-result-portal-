@@ -29,11 +29,18 @@ The live pre-RLS baseline was captured without changing records:
 - RLS is enabled with one deny policy per migrated table and no anonymous table
   `SELECT`, `INSERT`, `UPDATE` or `DELETE` privilege.
 - Post-migration counts exactly match the baseline above.
+- Central and School Platform browser contract scans contain no direct browser
+  Supabase RPC login, opaque client-secret storage or Result localStorage
+  authority path.
+- The exact Result permission contract distinguishes `traits.enter` from
+  `scores.enter` and `results.unpublish` from `results.publish`; an explicit
+  `results.manage` grant remains the documented broad management permission.
 
 ## Not performed
 
 No positive credential activation, score write, publishing change, revocation
-mutation or real-account password change was performed. Those operations would
-modify production identity or academic state and require an authorised account
-and an approved reversible test window. Real-account end-to-end verification is
-still a prerequisite for PKCE SSO.
+mutation or real-account password change was performed during the automated
+verification. Those operations would modify production identity or academic
+state and require an authorised account and an approved reversible test
+window. Real-account end-to-end verification remains a prerequisite for PKCE
+SSO. The live scope table remains empty; no assignment was invented.
