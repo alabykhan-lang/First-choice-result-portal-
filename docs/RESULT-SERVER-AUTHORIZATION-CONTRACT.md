@@ -1,6 +1,6 @@
 # Result Server Authorization Contract
 
-**Status:** Phase 2 central-auth data boundary, no cross-origin SSO redirects
+**Status:** Central-auth boundary preserved; Phase 3, RLS and PKCE work paused
 
 This contract is the server-side boundary for the Result Portal. The browser may
 request an operation, but the browser role, hidden controls, cached user object
@@ -92,8 +92,17 @@ downloaded. The complete resource matrix is in
 
 ## Transitional behavior
 
-The legacy Result login remains for existing operational users. It is display
-and compatibility state only and is not the new authorization boundary. New
-first-password setup and self-registration are disabled. Existing direct reads
-and several legacy writes remain until parity tests are complete; the remaining
-operations are listed in `RESULT-SECURITY-MIGRATION-PLAN.md`.
+The normal public page exposes one choice only: **WTS Staff Login**. It accepts
+the official WTS email address or staff number and the central WTS password.
+Public legacy login tabs, self-registration and first-password setup are
+removed. The normal client does not restore an access session from
+`localStorage`; a missing, expired or revoked HttpOnly Result session returns
+to the official WTS login.
+
+The old compatibility handler is retained only behind the non-public
+`GET /api/result-emergency` route. That route requires an active Result
+HttpOnly session plus an active Central Registry `access.manage` or
+`registry.manage` grant, records every successful use, shows a transitional
+warning and is time-limited. It does not create accounts, set first passwords
+or bypass central permissions. It is prepared for removal after central
+credential rollout.

@@ -1,6 +1,6 @@
 # Result Protected Data Access
 
-**Status:** Phase 3 protected data boundary, no PKCE SSO
+**Status:** Protected data boundary preserved; Phase 3/RLS/PKCE work paused
 
 ## Request boundary
 
@@ -52,11 +52,18 @@ The database remains the source of truth for protected reads.
 
 ## Compatibility boundary
 
-The Result Portal legacy login, browser password values, localStorage session
-fallback and direct Data API operations are retired in the client. The old
-database helper names remain only as fail-closed compatibility stubs so stale
-UI code cannot regain table authority. A protected request without the central
-HttpOnly session is rejected.
+The normal Result Portal has one official WTS login. Its legacy tabs,
+self-registration and first-password setup are not public. A missing or
+expired central HttpOnly session cannot be replaced by a browser-local
+`localStorage` session. Direct Data API helpers fail closed unless the active
+central session is present.
+
+For a narrowly scoped operational recovery, the old compatibility handler is
+reachable only through `GET /api/result-emergency`. The server validates the
+central Result session and the caller's Central Registry management grant,
+audits the use and returns a short transitional window. This route is not
+linked from the normal login screen and cannot create an account or set a first
+password.
 
 Report-card and analytics calculations remain client-side after protected source
 reads. Provider-key/OCR processing requires future server-side provider

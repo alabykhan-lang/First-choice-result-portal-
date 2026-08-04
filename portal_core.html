@@ -88,12 +88,10 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .auth-header h2{color:var(--g3);font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:2px}
 .auth-header p{color:rgba(255,255,255,.6);font-size:.75rem}
 .auth-body{padding:24px}
-.auth-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px}
-.auth-tab{flex:1;padding:10px;text-align:center;font-size:.85rem;font-weight:700;cursor:pointer;color:var(--gray);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
-.auth-tab.active{color:var(--g1);border-bottom-color:var(--g3)}
 .auth-field{margin-bottom:14px}
 .auth-field label{display:block;font-size:.75rem;font-weight:700;color:var(--gray);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .auth-field input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;box-sizing:border-box;transition:border .2s}
+.auth-help{margin:16px 0 0;color:var(--gray);font-size:.75rem;line-height:1.55}
 .auth-field input:focus{border-color:var(--g3)}
 .auth-btn{width:100%;padding:12px;background:var(--g1);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:6px;transition:background .2s}
 .auth-btn:hover{background:var(--g2)}
@@ -455,34 +453,15 @@ body.admin-mode .admin-only-bn{display:flex}
       <p>Result Management System</p>
     </div>
     <div class="auth-body">
-      <div class="auth-tabs">
-        <div class="auth-tab active" id="tab-central" onclick="showAuthTab('central')">WTS Staff Login</div>
-        <div class="auth-tab" id="tab-login" onclick="showAuthTab('login')">Legacy Login</div>
-        <div class="auth-tab" id="tab-register" onclick="showAuthTab('register')">Register</div>
-      </div>
-      <!-- CENTRAL STAFF LOGIN -->
+      <h3 style="margin:0 0 18px;color:var(--g1);font-family:'Playfair Display',serif">WTS Staff Login</h3>
       <div id="form-central">
         <div id="central-err" class="auth-err"></div>
-        <div class="auth-field"><label>WTS Staff Email</label><input type="email" id="central-email" placeholder="your@email.com"/></div>
-        <div class="auth-field"><label>Password</label><input type="password" id="central-pass" placeholder="********"/></div>
+        <div class="auth-field"><label>Official email or staff number</label><input type="text" id="central-email" autocomplete="username" placeholder="alabykhan@gmail.com or WTS/STF/000008"/></div>
+        <div class="auth-field"><label>WTS password</label><input type="password" id="central-pass" autocomplete="current-password" placeholder="********"/></div>
         <button class="auth-btn" onclick="doCentralLogin()">Sign In to WTS</button>
+        <p class="auth-help">Use your official WTS email address or staff number. Contact authorised school management if your account has not been activated or you have forgotten your password.</p>
       </div>
-      <!-- LOGIN FORM -->
-      <div id="form-login" style="display:none">
-        <div id="login-err" class="auth-err"></div>
-        <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com"/></div>
-        <div class="auth-field"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"/></div>
-        <button class="auth-btn" onclick="doLogin()">Login</button>
-      </div>
-      <!-- REGISTER FORM -->
-      <div id="form-register" style="display:none">
-        <div id="reg-err" class="auth-err"></div>
-        <div class="auth-field"><label>Full Name</label><input type="text" id="reg-name" placeholder="Your full name"/></div>
-        <div class="auth-field"><label>Email</label><input type="email" id="reg-email" placeholder="your@email.com"/></div>
-        <div class="auth-field"><label>Password</label><input type="password" id="reg-pass" placeholder="Min 6 characters"/></div>
-        <div class="auth-field"><label>Invite Code</label><input type="text" id="reg-code" placeholder="Enter invite code"/></div>
-        <button class="auth-btn" onclick="doRegister()">Create Account</button>
-      </div>
+      <div id="emergency-legacy-slot" style="display:none"></div>
     </div>
     <div class="auth-footer">Way To Success Standard Schools &copy; 2026</div>
   </div>
@@ -1348,6 +1327,8 @@ window.addEventListener('popstate',function(e){
 var CURRENT_USER=null;
 var CURRENT_AUTH_MODE=null;
 var CURRENT_PERMISSIONS=[];
+var EMERGENCY_LEGACY_ALLOWED=false;
+var EMERGENCY_LEGACY_REQUESTED=new URLSearchParams(window.location.search).get('emergency')==='1';
 
 function resultAuthRequest(method,body){
   var opts={method:method,credentials:'same-origin',headers:{'Accept':'application/json'}};
@@ -1378,7 +1359,7 @@ function resultDataRequest(action,payload){
 }
 
 function resultActionRequest(action,payload){
-  return isCentralAuth()?resultDataRequest(action,payload||{}):Promise.resolve({ok:true,legacy:true});
+  return isCentralAuth()?resultDataRequest(action,payload||{}):Promise.reject({ok:false,code:'RESULT_SESSION_REQUIRED'});
 }
 
 function centralUserFromPayload(payload){
@@ -1398,13 +1379,35 @@ function centralUserFromPayload(payload){
 
 function isCentralAuth(){return CURRENT_AUTH_MODE==='central';}
 
-function showAuthTab(tab){
-  document.getElementById('form-central').style.display=tab==='central'?'block':'none';
-  document.getElementById('form-login').style.display=tab==='login'?'block':'none';
-  document.getElementById('form-register').style.display=tab==='register'?'block':'none';
-  document.getElementById('tab-central').className='auth-tab'+(tab==='central'?' active':'');
-  document.getElementById('tab-login').className='auth-tab'+(tab==='login'?' active':'');
-  document.getElementById('tab-register').className='auth-tab'+(tab==='register'?' active':'');
+function activateEmergencyLegacy(){
+  if(!EMERGENCY_LEGACY_REQUESTED)return Promise.resolve(false);
+  return fetch('/api/result-emergency',{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json'},cache:'no-store'})
+    .then(function(res){
+      return res.text().then(function(raw){
+        var payload={};
+        try{payload=raw?JSON.parse(raw):{};}catch(e){payload={};}
+        if(!res.ok||!payload.ok)throw payload;
+        EMERGENCY_LEGACY_ALLOWED=true;
+        return true;
+      });
+    }).catch(function(){return false;});
+}
+
+function showEmergencyLegacyPanel(){
+  if(!EMERGENCY_LEGACY_ALLOWED)return;
+  var slot=document.getElementById('emergency-legacy-slot');
+  if(!slot)return;
+  slot.innerHTML='<div class="auth-err show" style="margin-bottom:14px">Transitional emergency route: use only for authorised legacy recovery. This access is audited. Public registration and first-password setup are disabled.</div>'+
+    '<div id="login-err" class="auth-err"></div>'+
+    '<div class="auth-field"><label>Existing legacy email</label><input type="email" id="login-email" autocomplete="username" placeholder="your@email.com"/></div>'+
+    '<div class="auth-field"><label>Existing legacy password</label><input type="password" id="login-pass" autocomplete="current-password" placeholder="********"/></div>'+
+    '<button class="auth-btn" onclick="doLogin()">Open emergency legacy session</button>'+
+    '<p class="auth-help"><a href="/" onclick="EMERGENCY_LEGACY_REQUESTED=false;return true">Return to official WTS Staff Login</a></p>';
+  document.getElementById('form-central').style.display='none';
+  slot.style.display='block';
+  var a=document.getElementById('auth-screen');
+  if(a)a.style.display='flex';
+  document.body.classList.remove('admin-mode');
 }
 
 function authErr(id,msg){
@@ -1414,6 +1417,7 @@ function authErr(id,msg){
 function authErrClear(id){document.getElementById(id).className='auth-err';}
 
 function doLogin(){
+  if(!EMERGENCY_LEGACY_ALLOWED){authErr('central-err','Use the official WTS Staff Login.');return;}
   var email=document.getElementById('login-email').value.trim().toLowerCase();
   var pass=document.getElementById('login-pass').value;
   authErrClear('login-err');
@@ -1421,41 +1425,49 @@ function doLogin(){
   // Temporary compatibility path for existing legacy browser sessions.
   dbGet('user_profiles?email=eq.'+encodeURIComponent(email))
     .then(function(rows){
-      if(!rows||!rows.length){authErr('login-err','Account not found');return;}
+      if(!rows||!rows.length){authErr('login-err','The legacy credential was not accepted.');return;}
       var user=rows[0];
       var stored=localStorage.getItem('wts_pw_'+email);
       if(!stored){
         authErr('login-err','Legacy password setup is disabled. Use WTS Staff Login.');
         return;
       }
-      if(stored!==btoa(pass)){authErr('login-err','Incorrect password');return;}
+      if(stored!==btoa(pass)){authErr('login-err','The legacy credential was not accepted.');return;}
       loginSuccess(user,'legacy');
-    }).catch(function(){authErr('login-err','Connection error. Check internet.');});
+    }).catch(function(){authErr('login-err','The emergency legacy service is unavailable.');});
 }
 
 function doCentralLogin(){
-  var login=document.getElementById('central-email').value.trim().toLowerCase();
+  var login=document.getElementById('central-email').value.trim();
   var password=document.getElementById('central-pass').value;
   authErrClear('central-err');
   if(!login||!password){authErr('central-err','Please fill in all fields');return;}
   resultAuthRequest('POST',{action:'login',login:login,password:password})
-    .then(function(payload){loginSuccess(centralUserFromPayload(payload),'central');})
+    .then(function(payload){
+      loginSuccess(centralUserFromPayload(payload),'central');
+      if(EMERGENCY_LEGACY_REQUESTED)activateEmergencyLegacy().then(function(enabled){if(enabled)showEmergencyLegacyPanel();});
+    })
     .catch(function(error){
       if(error&&error.code==='PASSWORD_CHANGE_REQUIRED'){
-        authErr('central-err','Password change is required through Central Registry before Result access.');
+        authErr('central-err','Compulsory password change is required. Use WTS Staff Login on the central WTS portal, then return here.');
       }else if(error&&error.code==='RESULT_ACCESS_NOT_GRANTED'){
         authErr('central-err','Your account has no active Results access grant.');
+      }else if(error&&error.code==='ACCOUNT_TEMPORARILY_LOCKED'){
+        authErr('central-err','This account is temporarily locked. Contact authorised school management for recovery.');
+      }else if(error&&['ACCOUNT_NOT_ACTIVE','INACTIVE_EMPLOYMENT','IDENTITY_PERSON_NOT_ACTIVE'].indexOf(error.code)>-1){
+        authErr('central-err','This staff identity is not active. Contact authorised school management.');
+      }else if(error&&['IDENTITY_CREDENTIAL_NOT_ACTIVE','PORTAL_ACCESS_SUSPENDED'].indexOf(error.code)>-1){
+        authErr('central-err','This WTS staff credential or Results access is suspended. Contact authorised school management.');
+      }else if(error&&['RESULT_SESSION_NOT_ACTIVE','SESSION_EXPIRED'].indexOf(error.code)>-1){
+        authErr('central-err','Your Result session has expired. Sign in again with your WTS credential.');
       }else if(error&&error.code==='RESULT_USER_MAPPING_AMBIGUOUS'){
         authErr('central-err','Your Result identity mapping needs management review.');
       }else{authErr('central-err','Sign in failed. Check your staff credentials.');}
     });
 }
 
-function doRegister(){
-  authErr('reg-err','New Result accounts are provisioned through Central Registry. Use WTS Staff Login.');
-}
-
 function loginSuccess(user,mode){
+  if((mode||'legacy')!=='central'&&!EMERGENCY_LEGACY_ALLOWED)return;
   CURRENT_USER=user;
   CURRENT_AUTH_MODE=mode||'legacy';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
@@ -1512,19 +1524,18 @@ function restorePortalPageAfterLogin(){
 
 function doLogout(){
   var wasCentral=isCentralAuth();
+  var hadEmergency=EMERGENCY_LEGACY_ALLOWED;
   var finish=function(){
     CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];
+    EMERGENCY_LEGACY_ALLOWED=false;
     localStorage.removeItem('wts_session');
     showAuthScreen();
-    document.getElementById('login-email').value='';
-    document.getElementById('login-pass').value='';
-    document.getElementById('central-email').value='';
-    document.getElementById('central-pass').value='';
+    ['login-email','login-pass','central-email','central-pass'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.querySelectorAll('.admin-only').forEach(function(el){el.style.display='';});
     document.querySelectorAll('.admin-only-bn').forEach(function(el){el.style.display='';});
     navTo('home',document.getElementById('ni-home'));
   };
-  if(wasCentral){resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(finish);}
+  if(wasCentral||hadEmergency){resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(finish);}
   else finish();
 }
 
@@ -1532,23 +1543,19 @@ function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.result_user)throw {code:'RESULT_SESSION_NOT_ACTIVE'};
     loginSuccess(centralUserFromPayload(payload),'central');
+    if(EMERGENCY_LEGACY_REQUESTED)activateEmergencyLegacy().then(function(enabled){if(enabled)showEmergencyLegacyPanel();});
   }).catch(function(){
-    var saved=localStorage.getItem('wts_session');
-    if(!saved){showAuthScreen();return;}
-    try{
-      var user=JSON.parse(saved);
-      dbGet('user_profiles?email=eq.'+encodeURIComponent(user.email))
-        .then(function(rows){
-          if(rows&&rows.length){loginSuccess(rows[0],'legacy');}
-          else{showAuthScreen();}
-        }).catch(function(){showAuthScreen();});
-    }catch(e){showAuthScreen();}
+    localStorage.removeItem('wts_session');
+    showAuthScreen();
   });
 }
 function showAuthScreen(){
   var a=document.getElementById('auth-screen');
   if(a)a.style.display='flex';
-  showAuthTab('central');
+  var central=document.getElementById('form-central');
+  if(central)central.style.display='block';
+  var slot=document.getElementById('emergency-legacy-slot');
+  if(slot){slot.style.display='none';slot.innerHTML='';}
   document.body.classList.remove('admin-mode');
 }
 
@@ -1608,7 +1615,9 @@ function filterCardByClass(key){
 var SB_URL='https://wuftzyeajmsxdrbwaawl.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 
+function directDataAccessAllowed(){return isCentralAuth()||EMERGENCY_LEGACY_ALLOWED;}
 function sbFetch(path,opts){
+  if(!directDataAccessAllowed())return Promise.reject({ok:false,code:'RESULT_SESSION_REQUIRED'});
   var url=SB_URL+'/rest/v1/'+path;
   var headers={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
   if(opts&&opts.headers)Object.assign(headers,opts.headers);
@@ -1651,6 +1660,7 @@ function dbGet(path){
   if(isCentralAuth()&&typeof path==='string'&&RESULT_PROTECTED_READS.indexOf(path.split('?')[0].toLowerCase())>-1){
     return centralResultRead(path);
   }
+  if(!directDataAccessAllowed())return Promise.reject({ok:false,code:'RESULT_SESSION_REQUIRED'});
   return sbFetch(path).then(function(r){return r.json();});
 }
 function dbPost(path,body){return sbFetch(path,{method:'POST',body:JSON.stringify(body)}).then(function(r){return r.json();});}
