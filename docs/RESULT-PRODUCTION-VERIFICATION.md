@@ -25,6 +25,10 @@ The live pre-RLS baseline was captured without changing records:
 - Browser legacy boundary scan confirms no active Supabase Data API helper,
   Base64 password comparison or trusted localStorage Result session write.
 - Existing production pages and protected API deployment remain available.
+- Direct anonymous REST reads for all nine migrated tables returned HTTP 401.
+- RLS is enabled with one deny policy per migrated table and no anonymous table
+  `SELECT`, `INSERT`, `UPDATE` or `DELETE` privilege.
+- Post-migration counts exactly match the baseline above.
 
 ## Not performed
 
