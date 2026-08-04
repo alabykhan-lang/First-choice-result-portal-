@@ -12,6 +12,16 @@ The additive database migrations are:
 - `identity_credential_management_adapter`
 - `central_session_cookie_adapters`
 - `central_management_session_adapters`
+- `result_permission_catalog_contract`
+- `result_rls_user_profiles`
+- `result_rls_invite_codes`
+- `result_rls_settings`
+- `result_rls_published_subjects`
+- `result_rls_scores`
+- `result_rls_remarks`
+- `result_rls_traits`
+- `result_rls_fees`
+- `result_rls_students`
 - `scope_privilege_cleanup`
 
 ## Application rollback
@@ -27,6 +37,12 @@ The additive database migrations are:
    scope and expiry first.
 
 ## Database rollback
+
+The reviewed table-level RLS rollback reference is maintained at
+`central-registry/supabase/rollback/RESULT-RLS-ROLLBACK.sql`. It must only be
+used for the affected table after confirming the protected deployment is
+stopped. It is not a normal compatibility path and must not restore unrestricted
+browser authority.
 
 - Do not drop `school_identity_sessions` or the new functions as an immediate
   reaction. Existing active sessions must first be expired or revoked through a
@@ -48,4 +64,3 @@ Check that the Result home page, class loading, score reads, existing report-car
 generation and production data counts match the pre-release baseline. Run the
 unauthenticated contract tests and confirm that no new session or audit rows
 were created by the test run.
-

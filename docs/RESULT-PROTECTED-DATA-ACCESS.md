@@ -1,6 +1,6 @@
 # Result Protected Data Access
 
-**Status:** Phase 2 central-auth migration, no PKCE SSO
+**Status:** Phase 3 protected data boundary, no PKCE SSO
 
 ## Request boundary
 
@@ -52,8 +52,16 @@ The database remains the source of truth for protected reads.
 
 ## Compatibility boundary
 
-The legacy Result mode remains temporarily for existing production users. Its
-direct Data API reads and legacy writes are intentionally not treated as a
-secure path and remain listed in the migration plan. Central-auth requests do
-not use those direct operations for the protected Result data listed above.
-RLS is therefore not enabled globally yet.
+The Result Portal legacy login, browser password values, localStorage session
+fallback and direct Data API operations are retired in the client. The old
+database helper names remain only as fail-closed compatibility stubs so stale
+UI code cannot regain table authority. A protected request without the central
+HttpOnly session is rejected.
+
+Report-card and analytics calculations remain client-side after protected source
+reads. Provider-key/OCR processing requires future server-side provider
+configuration before it can be enabled.
+
+The nine Result tables are rolled out with deny-by-default RLS migrations in
+the shared Central Registry repository. The RLS matrix and rollback reference
+are recorded in `RESULT-RLS-ROLLOUT.md` and the Central Registry rollback file.

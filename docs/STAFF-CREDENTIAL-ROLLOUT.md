@@ -41,4 +41,3 @@ Positive activation was not performed against a real account during this
 non-destructive release verification because it would change a production
 credential. The endpoint contract, negative authorization behavior, migration
 privileges and no-data-change checks were verified.
-

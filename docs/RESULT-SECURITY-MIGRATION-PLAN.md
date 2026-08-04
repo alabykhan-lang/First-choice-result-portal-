@@ -33,40 +33,28 @@
 
 ## Still transitional
 
-The following direct browser behavior remains and must be migrated with parity
-tests before anonymous table writes can be revoked:
+The following items remain transitional:
 
-- legacy Result login still uses existing per-browser local password values for
-  users who already have them;
-- the legacy display session object remains in `localStorage` for compatibility,
-  but it is no longer accepted as a central session and offline fallback is
-  removed;
-- legacy-mode reads and score, trait, remark, fee, student and settings writes
-  still use the existing browser path for production compatibility;
 - report-card markup and calculations remain client-side after protected reads;
   server-side action authorization is present, but a server-rendered report
   artifact is not yet implemented;
 - Central Registry module/role management still uses its existing transitional
-  admin-client RPC session; Result scope and credential writes have moved to
-  session-native management routes.
-- the legacy provider-key workflow remains separate from the central protected
-  configuration path and must be redesigned before provider secrets are
-  browser-available.
+  records session for student/staff/guardian workflows; Result scope,
+  credential and module-access management use session-native routes;
+- provider-key/OCR processing requires a server-side provider configuration;
+  browser provider secrets are no longer accepted.
 
-RLS is intentionally not enabled blindly in this phase. The existing Result
-tables have live operational traffic and need protected-read parity first.
+RLS is applied per table through the Central Registry migrations after the
+protected client boundary is deployed. No broad policy is used for an
+unassigned teacher.
 
 ## Next migration sequence
 
-1. Complete parity coverage for each protected Result read shape without
-   changing data.
-2. Move remaining legacy Result reads and writes behind the same adapters.
-3. Complete session-native Central Registry module, role and identity-read
-   management adapters.
-4. Add real class and subject scope assignments through Central Registry and
+1. Verify each live RLS migration and protected read/write route.
+2. Complete session-native Central Registry records adapters.
+3. Add real class and subject scope assignments through Central Registry and
    verify denial for unassigned teachers.
-5. Switch all central and then legacy-compatible writes to server routes.
-6. Revoke remaining direct table writes and enable RLS with policy tests.
-7. Remove legacy password/localStorage compatibility only after recovery and
-   central credential readiness are proven.
-
+4. Run authorised real-account workflow verification without changing results.
+5. Complete server-side provider configuration and report artifact review.
+6. Re-audit the shared-domain cookie and begin PKCE only after every checklist
+   item is passed.

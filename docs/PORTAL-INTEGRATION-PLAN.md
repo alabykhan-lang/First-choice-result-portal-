@@ -43,4 +43,3 @@ for every sensitive cross-origin endpoint.
 5. Complete separate Attendance and Notification operational/security reviews.
 6. Extend the contract to those systems only after their identity mappings and
    provider/device flows are proven.
-
