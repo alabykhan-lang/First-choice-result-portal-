@@ -41,6 +41,20 @@ module.exports = async function resultData(req, res) {
         p_resource: action.slice('read.'.length),
         p_payload: requestPayload,
       })
+    : action === 'scores.enter'
+      ? await supabaseRpc('school_result_score_update', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+        p_student_id: requestPayload.student_id || null,
+        p_class_key: requestPayload.class_key || null,
+        p_subject_index: requestPayload.subject_index === '' || requestPayload.subject_index === undefined ? null : requestPayload.subject_index,
+        p_term: requestPayload.term || null,
+        p_academic_session: requestPayload.academic_session || null,
+        p_ca1: requestPayload.ca1 === '' || requestPayload.ca1 === undefined ? null : requestPayload.ca1,
+        p_ca2: requestPayload.ca2 === '' || requestPayload.ca2 === undefined ? null : requestPayload.ca2,
+        p_ca3: requestPayload.ca3 === '' || requestPayload.ca3 === undefined ? null : requestPayload.ca3,
+        p_exam: requestPayload.exam === '' || requestPayload.exam === undefined ? null : requestPayload.exam,
+      })
     : action === 'traits.enter'
       ? await supabaseRpc('school_result_traits_update', {
         p_session_id: session.sessionId,
