@@ -1,55 +1,39 @@
 # Result Portal Integration Plan
 
-The School Platform remains the public website and future WTS Workspace
-entrance. The Result Portal remains a separate application and repository. This
-phase establishes a server-side Result authorization boundary without merging
-repositories, using iframes or implementing SSO redirects.
+**Status:** Result Portal PKCE SSO is implemented on `main`; production deployment verification is in progress.
 
-## Current integration boundary
+## Boundary
 
-- Central Registry owns people, staff status, credentials, grants and scopes.
-- The Result Portal resolves its existing `user_profiles` record through the
-  confirmed central person mapping.
-- Result server functions revalidate central identity and the Results grant for
-  each protected action.
-- The browser receives only display data and a host-only HttpOnly session cookie.
-- Attendance and Notification are deliberately unchanged in this phase.
-- Central-auth Result reads and writes now pass through the protected Result
-  route; legacy compatibility mode remains isolated and is not an SSO contract.
-- Central Registry has a context-aware Result scope UI, audited credential
-  activation/recovery and session-native management routes. Result scope and
-  credential management use host-only HttpOnly sessions. School Platform
-  workspace sign-in also uses a server-side session cookie and does not store
-  opaque client credentials in browser storage.
-- The Result Portal has no browser role or invite authority. Central Registry is
-  the only management surface for real staff grants, class scopes and subject
-  scopes.
-- Central Registry management visibility is now server-derived and fail-closed:
-  the Result link requires a validated canonical Central Registry management
-  permission, and the Central Registry session route repeats that check for
-  direct URL access.
+The School Platform is the WTS Workspace and central entry point. Central Registry remains the authority for people, staff status, credentials, grants and scopes. Result Portal remains a separate application and repository.
 
-## Future module navigation
+The browser does not receive a central password, service-role key, client secret, password hash or reusable central session secret. Attendance and Notification are deliberately unchanged.
 
-The workspace should show Results, Registry, Attendance, Notifications and other
-modules only from current grants. Opening a module is a navigation decision;
-the specialist application remains the final authorization boundary.
+## Current flow
 
-The likely production topology is one subdomain per application. DNS and Vercel
-configuration should be completed before SSO testing, with explicit allowlists
-for every sensitive cross-origin endpoint.
+1. WTS Workspace shows Results only from a current active `results` grant.
+2. Result Portal starts a browser PKCE request with S256, state and nonce.
+3. `wts-school-platform.vercel.app/api/sso/authorize` requires the WTS Workspace session and exact Result client/callback.
+4. Supabase stores only the authorization-code, state and nonce hashes. The code expires after five minutes and is single-use.
+5. Result Portal posts the code and verifier to `/api/result-sso-token`.
+6. Supabase revalidates the central session linkage, person, employment, identity account, active credential, Results grant and Result profile mapping.
+7. Result Portal creates its own host-only HttpOnly session cookie.
+8. Existing protected Result APIs continue to enforce server-side permissions and class/subject scopes.
 
-## Recommended order
+## Fixed allowlist
 
-1. Complete non-destructive Result protected-read parity and real-account
-   workflow verification. **Completed for this phase.**
-2. Verify Central Registry credential recovery and make only real Result scope
-   assignments through management approval. **Management controls completed;
-   no assignment was invented.**
-3. Integrate Results into the Workspace through a short-lived authorization
-   code handoff, preferably PKCE-bound and server exchanged.
-4. Audit and harden Registry before making it a target of the same handoff.
-5. Complete separate Attendance and Notification operational/security reviews.
-6. Extend the contract to those systems only after their identity mappings and
-   provider/device flows are proven.
+- Client: `result_portal`
+- Target: `results`
+- Method: `S256`
+- Callback: `https://wts-result-system.vercel.app/portal_core.html`
 
+No wildcard redirect or credentialed wildcard CORS is used.
+
+## Login and logout
+
+A direct Result visit with no valid Result session starts the central redirect. There is no normal Result password form, public Legacy Login or Register. Result logout revokes the Result session, clears its cookie and returns to Workspace. WTS Workspace and Central Registry logout revoke linked Result sessions.
+
+The old public Result-password RPC is no longer executable by anonymous or authenticated Data API roles. Password management remains a central WTS function.
+
+## Data preservation
+
+No student, score, trait, remark, fee, publication, report-card, identity or grant records are created or changed by the SSO integration. Attendance and Notification are outside the source and database changes in this phase.
