@@ -93,6 +93,19 @@ module.exports = async function resultData(req, res) {
         p_paid: requestPayload.paid === '' || requestPayload.paid === undefined ? null : requestPayload.paid,
         p_debt: requestPayload.debt === '' || requestPayload.debt === undefined ? null : requestPayload.debt,
       })
+    : action === 'context.set'
+      ? await supabaseRpc('school_result_context_set', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+        p_class_key: requestPayload.class_key || null,
+        p_academic_session: requestPayload.academic_session || null,
+        p_term: requestPayload.term || null,
+      })
+    : action === 'context.read'
+      ? await supabaseRpc('school_result_context_read', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+      })
     : action === 'settings.app_config.update'
       ? await supabaseRpc('school_result_app_config_update', {
         p_session_id: session.sessionId,
