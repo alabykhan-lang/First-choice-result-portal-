@@ -96,53 +96,16 @@ module.exports = async function resultAuth(req, res) {
   }
 
   if (body.action === 'change_password') {
-    const login = typeof body.login === 'string' ? body.login.trim() : '';
-    const currentPassword = typeof body.current_password === 'string' ? body.current_password : '';
-    const newPassword = typeof body.new_password === 'string' ? body.new_password : '';
-    if (!login || !currentPassword || !newPassword) {
-      sendJson(res, 400, { ok: false, code: 'PASSWORD_CHANGE_INPUT_REQUIRED' });
-      return;
-    }
-    const payload = await supabaseRpc('school_identity_change_password', {
-      p_login: login,
-      p_current_password: currentPassword,
-      p_new_password: newPassword,
-    });
-    sendJson(res, payload?.ok ? 200 : 400, payload);
+    sendJson(res, 403, { ok: false, code: 'CENTRAL_PASSWORD_MANAGEMENT_REQUIRED' });
     return;
   }
 
-  if (body.action !== 'login') {
-    sendJson(res, 400, { ok: false, code: 'AUTH_ACTION_NOT_SUPPORTED' });
+  if (body.action === 'login') {
+    sendJson(res, 400, { ok: false, code: 'SSO_REQUIRED' });
     return;
   }
 
-  const login = typeof body.login === 'string' ? body.login.trim() : '';
-  const password = typeof body.password === 'string' ? body.password : '';
-  if (!login || !password) {
-    sendJson(res, 400, { ok: false, code: 'LOGIN_AND_PASSWORD_REQUIRED' });
-    return;
-  }
+  sendJson(res, 400, { ok: false, code: 'AUTH_ACTION_NOT_SUPPORTED' });
 
-  const payload = await supabaseRpc('school_identity_result_login', {
-    p_login: login,
-    p_password: password,
-  });
-  if (!payload?.ok) {
-    const status = payload?.code === 'PASSWORD_CHANGE_REQUIRED' ? 428 : 401;
-    sendJson(res, status, payload || { ok: false, code: 'INVALID_LOGIN' });
-    return;
-  }
-
-  if (!payload.session_id || !payload.session_secret) {
-    sendJson(res, 503, { ok: false, code: 'RESULT_SESSION_ISSUE_FAILED' });
-    return;
-  }
-  const centralRegistryManagementAllowed = await centralManagementAccess(payload.session_id, payload.session_secret);
-  setSessionCookie(res, payload.session_id, payload.session_secret);
-  sendJson(res, 200, safeLoginResponse({
-    ...payload,
-    central_registry_management_allowed: centralRegistryManagementAllowed,
-  }));
 };
 
