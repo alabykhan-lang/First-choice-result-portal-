@@ -1602,6 +1602,7 @@ function filterCardByClass(key){
     CLS=key;
     SELECTED_SESSION=selectedSession;
     CONTEXT_EXPLICIT=true;
+    setMode(true);
     persistSelectedContext();
     syncContextDisplay();
     var tbSub=document.getElementById('tb-sub');
