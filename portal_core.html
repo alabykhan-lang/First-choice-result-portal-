@@ -440,6 +440,8 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .results-management-only-bn{display:none}
 body.results-management-mode .results-management-only{display:flex}
 body.results-management-mode .results-management-only-bn{display:flex}
+.central-management-only{display:none}
+body.central-management-mode .central-management-only{display:flex}
 #auth-screen .auth-body > .auth-field{display:none}
 </style>
 </head>
@@ -484,7 +486,7 @@ body.results-management-mode .results-management-only-bn{display:flex}
       Home
     </div>
 
-    <div class="ni results-management-only" onclick="window.open('https://wts-central-registry.vercel.app/','_blank','noopener')">
+    <div class="ni central-management-only" onclick="window.open('https://wts-central-registry.vercel.app/','_blank','noopener')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Central Registry Access Management
     </div>
@@ -1273,6 +1275,7 @@ window.addEventListener('popstate',function(e){
 var CURRENT_USER=null;
 var CURRENT_AUTH_MODE=null;
 var CURRENT_PERMISSIONS=[];
+var CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
 
 function resultAuthRequest(method,body){
   var opts={method:method,credentials:'same-origin',headers:{'Accept':'application/json'}};
@@ -1316,6 +1319,7 @@ function centralUserFromPayload(payload){
     email:resultUser.email,
     full_name:resultUser.full_name||resultUser.email,
     _permissions:permissions,
+    _centralManagementAllowed:payload&&payload.central_registry_management_allowed===true,
     _person:payload&&payload.person,
     _expires_at:payload&&payload.expires_at
   };
@@ -1362,6 +1366,7 @@ function loginSuccess(user,mode){
   CURRENT_USER=user;
   CURRENT_AUTH_MODE='central';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
+  CURRENT_CENTRAL_MANAGEMENT_ALLOWED=user._centralManagementAllowed===true;
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
   document.getElementById('sb-user-name').textContent=user.full_name;
@@ -1373,6 +1378,11 @@ function loginSuccess(user,mode){
   }else{
     badge.textContent='Result access';badge.className='badge-access';
     document.body.classList.remove('results-management-mode');
+  }
+  if(CURRENT_CENTRAL_MANAGEMENT_ALLOWED){
+    document.body.classList.add('central-management-mode');
+  }else{
+    document.body.classList.remove('central-management-mode');
   }
   // Set logo on auth screen
   var lg=document.getElementById('wts-logo');
@@ -1408,7 +1418,7 @@ function restorePortalPageAfterLogin(){
 
 function doLogout(){
   var finish=function(){
-    CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];
+    CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
     showAuthScreen();
     document.getElementById('central-email').value='';
     document.getElementById('central-pass').value='';
@@ -1429,6 +1439,7 @@ function showAuthScreen(){
   var a=document.getElementById('auth-screen');
   if(a)a.style.display='flex';
   document.body.classList.remove('results-management-mode');
+  document.body.classList.remove('central-management-mode');
 }
 
 function filterCardByClass(key){

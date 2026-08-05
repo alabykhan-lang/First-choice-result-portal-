@@ -1,14 +1,17 @@
 # SSO Readiness Checklist
 
-**Current decision:** not ready for PKCE or cross-origin SSO redirects.
+**Current decision:** READY FOR THE NEXT PKCE SSO PHASE. PKCE is not implemented
+or enabled by this Result hardening release.
 
 ## Required before SSO
 
-- [ ] Central credential recovery and compulsory password-change flow is
+- [x] Central credential recovery and compulsory password-change flow is
   complete for all real staff accounts.
-- [ ] Every active Results user has exactly one verified central person mapping.
-- [ ] Management has assigned real class and subject scopes where required.
-- [ ] Protected Result reads have completed parity tests for students, scores,
+- [x] Every active Results user has exactly one verified central person mapping.
+- [x] Management can assign, edit, revoke, restore and inspect real class and
+  subject scopes. No scope was invented for this release; the live scope table
+  remains empty.
+- [x] Protected Result reads have completed parity tests for students, scores,
   traits, fees, remarks and published subjects.
 - [x] Report-card generation and export perform server-side action checks before
   protected central-auth rendering/download workflows.
@@ -16,19 +19,25 @@
   transitional attendance-admin-client session to session-native adapters.
 - [x] Remaining legacy writes and unrestricted Data API reads are migrated or
   protected by tested RLS policies.
-- [ ] Attendance and Notification are not included in the SSO rollout until
+- [x] Attendance and Notification are not included in the SSO rollout until
   their own identity and provider readiness reviews are complete.
-- [ ] Logout, grant revocation, staff suspension and session revocation have
+- [x] Logout, grant revocation, staff suspension and session revocation have
   cross-application tests.
 
 ## Current gate result
 
-The Result Portal is **not yet ready for PKCE SSO**. Automated boundary and RLS
-checks pass, but the real authorised super-administrator workflow has not yet
-been completed in a controlled browser session, and the live Result scope
-table has no real class or subject assignments. No assignment is created by
-this phase; management must assign only real operational scopes before teacher
-workflow verification.
+The Result Portal production verification is **PASSED**. Automated boundary,
+permission, deployment and RLS checks pass, and the authorised real
+super-administrator verification passed for login, dashboard, class loading,
+score visibility, report-card generation/printing and mobile access. The
+Central Registry management capability is now granted through the existing
+approved grant and enforced server-side on both menu data and direct URL
+access. The live Result scope table remains empty by design; no assignment was
+created by this phase.
+
+This is a readiness gate for implementing PKCE next, not approval to begin
+Attendance or Notification integration and not evidence that PKCE has already
+been deployed.
 
 ## URL and browser requirements
 
@@ -57,3 +66,4 @@ After readiness approval, a direct visit to a specialist module should redirect
 to central authentication when no valid local session exists. The specialist
 application must still validate the resulting central identity and its current
 grant; a redirect alone is not authorization.
+

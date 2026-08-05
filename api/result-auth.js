@@ -20,7 +20,20 @@ function safeLoginResponse(payload) {
     result_user: payload.result_user,
     access_role: payload.access_role,
     permissions: payload.permissions,
+    central_registry_management_allowed: payload.central_registry_management_allowed === true,
   };
+}
+
+async function centralManagementAccess(sessionId, sessionSecret) {
+  try {
+    const payload = await supabaseRpc('school_result_central_management_access', {
+      p_session_id: sessionId,
+      p_session_secret: sessionSecret,
+    });
+    return payload?.ok === true && payload.central_registry_management_allowed === true;
+  } catch {
+    return false;
+  }
 }
 
 module.exports = async function resultAuth(req, res) {
@@ -47,7 +60,12 @@ module.exports = async function resultAuth(req, res) {
       sendJson(res, 401, payload || { ok: false, code: 'RESULT_SESSION_NOT_ACTIVE' });
       return;
     }
-    sendJson(res, 200, { ...payload, auth_mode: 'central' });
+    const centralRegistryManagementAllowed = await centralManagementAccess(session.sessionId, session.sessionSecret);
+    sendJson(res, 200, {
+      ...payload,
+      auth_mode: 'central',
+      central_registry_management_allowed: centralRegistryManagementAllowed,
+    });
     return;
   }
 
@@ -120,6 +138,11 @@ module.exports = async function resultAuth(req, res) {
     sendJson(res, 503, { ok: false, code: 'RESULT_SESSION_ISSUE_FAILED' });
     return;
   }
+  const centralRegistryManagementAllowed = await centralManagementAccess(payload.session_id, payload.session_secret);
   setSessionCookie(res, payload.session_id, payload.session_secret);
-  sendJson(res, 200, safeLoginResponse(payload));
+  sendJson(res, 200, safeLoginResponse({
+    ...payload,
+    central_registry_management_allowed: centralRegistryManagementAllowed,
+  }));
 };
+

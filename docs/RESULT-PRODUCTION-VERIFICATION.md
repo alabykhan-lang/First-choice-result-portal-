@@ -1,5 +1,11 @@
 # Result Production Verification
 
+**Status: PASSED â€” production verification complete for the Result hardening
+release.** The reported Central Registry management denial was traced to a
+missing canonical permission on the existing approved management grant. The
+grant and both application-side gates are now aligned. No academic record was
+changed.
+
 ## Baseline
 
 The live pre-RLS baseline was captured without changing records:
@@ -16,6 +22,9 @@ The live pre-RLS baseline was captured without changing records:
 | Invite codes | 1 |
 | Active Result grants | 25 |
 | Active Result scopes | 0 |
+
+The before and after counts are identical. The empty scope count is intentional:
+no class or subject assignment was invented for this correction.
 
 ## Automated checks
 
@@ -35,12 +44,34 @@ The live pre-RLS baseline was captured without changing records:
 - The exact Result permission contract distinguishes `traits.enter` from
   `scores.enter` and `results.unpublish` from `results.publish`; an explicit
   `results.manage` grant remains the documented broad management permission.
+- The existing approved primary Central Registry grant contains the canonical
+  `central_registry.administer` permission. No identity, duplicate role,
+  duplicate grant or Result grant was created.
+- Result login derives `central_registry_management_allowed` through a guarded
+  server RPC; the Central Registry session route repeats the canonical
+  management check for existing sessions and login issuance.
+- The focused Result sidebar and Central Registry management-gate contracts
+  pass, including fail-closed behavior when the capability check errors.
 
-## Not performed
+## Authorised real-account verification
 
-No positive credential activation, score write, publishing change, revocation
-mutation or real-account password change was performed during the automated
-verification. Those operations would modify production identity or academic
-state and require an authorised account and an approved reversible test
-window. Real-account end-to-end verification remains a prerequisite for PKCE
-SSO. The live scope table remains empty; no assignment was invented.
+The authorised super-administrator verification passed without changing
+academic records for:
+
+- Central WTS login;
+- dashboard loading;
+- class loading;
+- score visibility;
+- report-card generation and printing; and
+- mobile access.
+
+The correction was verified through the live existing grant, server-side
+management gate, protected deployment contracts and post-correction data
+counts. No score write, publishing change, assignment mutation, revocation
+mutation or password change was performed for testing. The existing Result
+calculations and report-card design were not rebuilt.
+
+The Result Portal is ready for the next PKCE SSO implementation phase. PKCE is
+not implemented in this release, and Attendance and Notification remain out of
+scope.
+

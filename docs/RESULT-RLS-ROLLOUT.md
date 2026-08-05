@@ -13,6 +13,11 @@ See the Central Registry migration directory for the per-table migrations,
 `supabase/rollback/RESULT-BOUNDARY-HARDENING-ROLLBACK.sql` for reviewed rollback
 references.
 
+The management visibility correction is recorded in
+`20260805000000_central_management_permission_gate.sql`. It adds the protected
+Result-to-Central management capability check and idempotently restores the
+canonical permission on the existing approved primary management grant.
+
 ## Live rollout record
 
 The following Result tables are enabled with RLS and have no anonymous or
@@ -23,11 +28,15 @@ approved read/write path. The live migration sequence is recorded by Supabase
 under the table-specific `result_rls_*` versions and the final
 `result_boundary_hardening` migration.
 
-The final hardening migration did not add data, grants or scopes. It added only
-permission definitions, session-native workspace access and fail-closed legacy
-mutation guards.
+The final hardening migration did not add data, identities, roles or scopes. It
+added only permission definitions, session-native workspace access and
+fail-closed legacy mutation guards. The management correction updated one
+existing approved grant only; it did not create a grant or change any Result
+grant.
 
-RLS is not considered complete until the protected endpoint contract tests pass,
-production row counts remain unchanged, and an authorised account completes the
-non-destructive Result workflow. PKCE SSO remains blocked until those checks and
-the Central Registry transitional operations are complete.
+The table-by-table RLS rollout is complete for the nine prioritised Result
+tables. Protected endpoint contracts pass, production row counts remain
+unchanged, and the authorised super-administrator completed the required
+non-destructive production verification. PKCE SSO is now ready for its next
+separate implementation phase; PKCE itself is not enabled by this rollout.
+

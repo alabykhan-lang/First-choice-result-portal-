@@ -25,6 +25,9 @@ The additive database migrations are:
 - `scope_privilege_cleanup`
 - `result_boundary_hardening` (permission catalog additions, exact permission
   checks, legacy mutation guards and the session-native workspace adapter)
+- `20260805000000_central_management_permission_gate` (server-derived Result
+  management visibility, Central Registry management-session gate and an
+  idempotent restoration of the existing approved canonical permission)
 
 ## Application rollback
 
@@ -52,6 +55,19 @@ It removes only the new session adapter/guards and unused catalog definitions
 after dependency checks; it intentionally does not restore legacy browser
 credentials, role mutation, invite rotation or direct Data API access.
 
+The management correction is reversible without touching Result records:
+
+1. Confirm the existing primary management grant and its audit history.
+2. If rollback is approved, remove only the appended
+   `central_registry.administer` value from that same existing grant, preserving
+   every other permission and grant field.
+3. Revoke or redeploy the affected application routes together so the Result
+   link remains fail-closed.
+4. Re-run the focused management contracts and confirm the Result data counts.
+
+Do not delete the existing identity, grant, audit row, students, scores or
+other academic records as part of this rollback.
+
 - Do not drop `school_identity_sessions` or the new functions as an immediate
   reaction. Existing active sessions must first be expired or revoked through a
   controlled server operation.
@@ -72,3 +88,4 @@ Check that the Result home page, class loading, score reads, existing report-car
 generation and production data counts match the pre-release baseline. Run the
 unauthenticated contract tests and confirm that no new session or audit rows
 were created by the test run.
+

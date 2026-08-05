@@ -24,6 +24,10 @@ repositories, using iframes or implementing SSO redirects.
 - The Result Portal has no browser role or invite authority. Central Registry is
   the only management surface for real staff grants, class scopes and subject
   scopes.
+- Central Registry management visibility is now server-derived and fail-closed:
+  the Result link requires a validated canonical Central Registry management
+  permission, and the Central Registry session route repeats that check for
+  direct URL access.
 
 ## Future module navigation
 
@@ -38,12 +42,14 @@ for every sensitive cross-origin endpoint.
 ## Recommended order
 
 1. Complete non-destructive Result protected-read parity and real-account
-   workflow verification.
+   workflow verification. **Completed for this phase.**
 2. Verify Central Registry credential recovery and make only real Result scope
-   assignments through management approval.
+   assignments through management approval. **Management controls completed;
+   no assignment was invented.**
 3. Integrate Results into the Workspace through a short-lived authorization
    code handoff, preferably PKCE-bound and server exchanged.
 4. Audit and harden Registry before making it a target of the same handoff.
 5. Complete separate Attendance and Notification operational/security reviews.
 6. Extend the contract to those systems only after their identity mappings and
    provider/device flows are proven.
+

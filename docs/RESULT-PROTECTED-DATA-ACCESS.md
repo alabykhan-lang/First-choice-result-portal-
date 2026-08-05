@@ -72,3 +72,20 @@ are recorded in `RESULT-RLS-ROLLOUT.md` and the Central Registry rollback file.
 
 The former transitional Result emergency gate has been retired from the shared
 database. It cannot restore legacy Result access or bypass WTS Staff Login.
+
+## Central Registry management boundary
+
+The Result sidebar does not use `results.manage` as a proxy for Central Registry
+authority. The protected Result session response obtains a boolean from
+`school_result_central_management_access`, which validates the active Result
+session and the same person's active Central Registry management grant. The
+Central Registry link is hidden by default and is rendered only for a positive
+server response.
+
+The Central Registry `/api/registry-session` route repeats the canonical
+permission check for both existing sessions and login issuance. A direct visit
+or forged browser state therefore receives `MANAGEMENT_ACCESS_DENIED`; menu
+visibility is not the security boundary. The approved existing primary
+management grant was restored with `central_registry.administer` and no new
+identity, role, scope or Result grant was created.
+

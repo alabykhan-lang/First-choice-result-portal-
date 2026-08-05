@@ -22,6 +22,14 @@
 - The shared permission catalog now contains the exact Result contract,
   including `traits.enter`, `results.unpublish`, `result_users.manage` and
   `result_settings.manage`.
+- The Central Registry management link is now derived from a server-validated
+  `central_registry_management_allowed` result. It is not inferred from the
+  Result grant, a browser role, or local storage.
+- The Central Registry session endpoint rejects management access unless the
+  current active grant contains a canonical management permission. The
+  existing approved primary management grant was corrected to include
+  `central_registry.administer`; no identity, role, assignment or duplicate
+  grant was created.
 
 ## Remaining compatibility
 
@@ -36,5 +44,8 @@
 - Provider-key/OCR processing requires a server-side provider configuration and
   is not enabled from browser storage.
 
-No identity, student, class, score, permission grant, scope assignment or
-academic record was created by this migration.
+No identity, student, class, score, scope assignment or academic record was
+created by this migration. The one existing approved management grant was
+updated idempotently to restore its missing canonical permission, with an
+audit event and no change to existing Result grants or data.
+

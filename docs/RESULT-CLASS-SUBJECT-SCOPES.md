@@ -46,6 +46,13 @@ The Result authorizer checks:
 - current academic session and term for entry and publishing;
 - effective and expiry dates.
 
+Central Registry scope administration requires a canonical management
+permission (`central_registry.administer`, `staff_management.administer` or
+`system_administration.administer`) on the active Central Registry grant. The
+Result portal never treats a Result administrator role as permission to manage
+Central Registry assignments, and the sidebar remains hidden when the
+server-derived management capability is false.
+
 Whole-class assignment permits class-scoped administration and class records;
 score, publication and subject-result data still require the relevant subject
 scope. This prevents a teacher with only a class assignment from receiving all
@@ -54,3 +61,8 @@ subject marks automatically.
 If no applicable assignment exists, the Result path denies the request and the
 portal displays: **No class or subject has been assigned to this account.**
 Names are never used to infer scope.
+
+The management page is also protected on direct URL access by the Central
+Registry session route. A browser-controlled role, hidden menu, or stale session
+cannot create, edit, revoke or restore an assignment.
+
