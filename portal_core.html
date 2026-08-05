@@ -457,13 +457,12 @@ body.central-management-mode .central-management-only{display:flex}
       <p>Result Management System</p>
     </div>
     <div class="auth-body">
-      <div class="auth-title">WTS Staff Login</div>
-      <!-- CENTRAL STAFF LOGIN -->
+      <div class="auth-title">Secure WTS connection</div>
       <div id="form-central">
-        <div id="central-err" class="auth-err"></div>
-        <div class="auth-field"><label>WTS Staff Number or Official Email</label><input type="text" id="central-email" autocomplete="username" placeholder="Staff number or your@email.com"/></div>
-        <div class="auth-field"><label>Password</label><input type="password" id="central-pass" placeholder="********"/></div>
-        <button class="auth-btn" onclick="doCentralLogin()">Sign In to WTS</button>
+        <div id="central-err" class="auth-err show">Opening the official WTS sign-in…</div>
+        <p style="font-size:.82rem;color:var(--gray);line-height:1.6;text-align:center;margin-top:14px">
+          Results uses the central WTS Workspace sign-in. No separate Result Portal password is accepted.
+        </p>
       </div>
     </div>
     <div class="auth-footer">Way To Success Standard Schools &copy; 2026</div>
@@ -1340,21 +1339,7 @@ function authErr(id,msg){
 function authErrClear(id){document.getElementById(id).className='auth-err';}
 
 function doCentralLogin(){
-  var login=document.getElementById('central-email').value.trim();
-  var password=document.getElementById('central-pass').value;
-  authErrClear('central-err');
-  if(!login||!password){authErr('central-err','Please fill in all fields');return;}
-  resultAuthRequest('POST',{action:'login',login:login,password:password})
-    .then(function(payload){loginSuccess(centralUserFromPayload(payload),'central');})
-    .catch(function(error){
-      if(error&&error.code==='PASSWORD_CHANGE_REQUIRED'){
-        authErr('central-err','Password change is required through Central Registry before Result access.');
-      }else if(error&&error.code==='RESULT_ACCESS_NOT_GRANTED'){
-        authErr('central-err','Your account has no active Results access grant.');
-      }else if(error&&error.code==='RESULT_USER_MAPPING_AMBIGUOUS'){
-        authErr('central-err','Your Result identity mapping needs management review.');
-      }else{authErr('central-err','Sign in failed. Check your staff credentials.');}
-    });
+  startResultSso();
 }
 
 function loginSuccess(user,mode){
@@ -1420,21 +1405,158 @@ function doLogout(){
   var finish=function(){
     CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
     showAuthScreen();
-    document.getElementById('central-email').value='';
-    document.getElementById('central-pass').value='';
+    var emailField=document.getElementById('central-email');
+    var passwordField=document.getElementById('central-pass');
+    if(emailField)emailField.value='';
+    if(passwordField)passwordField.value='';
     document.querySelectorAll('.results-management-only').forEach(function(el){el.style.display='';});
     document.querySelectorAll('.results-management-only-bn').forEach(function(el){el.style.display='';});
     navTo('home',document.getElementById('ni-home'));
+    window.location.assign('https://wts-school-platform.vercel.app/workspace');
   };
   resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(finish);
+}
+
+function ssoClearTransientState(){
+  try{
+    sessionStorage.removeItem('wts_pkce_verifier');
+    sessionStorage.removeItem('wts_pkce_state');
+    sessionStorage.removeItem('wts_pkce_nonce');
+  }catch(e){}
+}
+
+function ssoBytesToBase64Url(bytes){
+  var binary='';
+  for(var i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
+}
+
+function ssoRandomToken(size){
+  var bytes=new Uint8Array(size);
+  window.crypto.getRandomValues(bytes);
+  return ssoBytesToBase64Url(bytes);
+}
+
+function ssoStatus(message){
+  showAuthScreen();
+  var err=document.getElementById('central-err');
+  if(err){err.textContent=message;err.className='auth-err show';}
+}
+
+function resultSsoRequest(body){
+  return fetch('/api/result-sso-token',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:{'Accept':'application/json','Content-Type':'application/json'},
+    body:JSON.stringify(body),
+    cache:'no-store'
+  }).then(function(res){
+    return res.text().then(function(raw){
+      var payload={};
+      try{payload=raw?JSON.parse(raw):{};}catch(e){payload={ok:false,code:'SSO_INVALID_RESPONSE'};}
+      if(!res.ok){payload.http_status=res.status;throw payload;}
+      return payload;
+    });
+  });
+}
+
+function completeResultSso(){
+  var params=new URLSearchParams(window.location.search);
+  var error=params.get('error')||'';
+  if(error){
+    ssoClearTransientState();
+    ssoStatus('Central WTS sign-in was not completed. Please try again.');
+    return;
+  }
+  var code=params.get('code')||'';
+  var state=params.get('state')||'';
+  var nonce=params.get('nonce')||'';
+  var verifier='';
+  var expectedState='';
+  var expectedNonce='';
+  try{
+    verifier=sessionStorage.getItem('wts_pkce_verifier')||'';
+    expectedState=sessionStorage.getItem('wts_pkce_state')||'';
+    expectedNonce=sessionStorage.getItem('wts_pkce_nonce')||'';
+  }catch(e){}
+  if(!code||!verifier||!expectedState||!expectedNonce||state!==expectedState||nonce!==expectedNonce){
+    ssoClearTransientState();
+    ssoStatus('The secure sign-in response could not be verified. Please start again.');
+    return;
+  }
+  ssoStatus('Completing secure WTS sign-in…');
+  resultSsoRequest({
+    grant_type:'authorization_code',
+    client_id:'result_portal',
+    redirect_uri:'https://wts-result-system.vercel.app/portal_core.html',
+    code:code,
+    code_verifier:verifier,
+    state:state,
+    nonce:nonce
+  }).then(function(payload){
+    ssoClearTransientState();
+    loginSuccess(centralUserFromPayload(payload),'central');
+  }).catch(function(payload){
+    ssoClearTransientState();
+    if(payload&&payload.code==='RESULT_ACCESS_NOT_GRANTED'){
+      ssoStatus('This account does not have an active Results grant.');
+    }else{
+      ssoStatus('Secure WTS sign-in was rejected. Please return to the WTS Workspace and try again.');
+    }
+  });
+}
+
+function startResultSso(){
+  if(!window.crypto||!window.crypto.subtle||!window.crypto.getRandomValues){
+    ssoStatus('This browser cannot perform secure sign-in. Please use an updated browser.');
+    return;
+  }
+  var verifier='';
+  var state='';
+  var nonce='';
+  try{
+    verifier=ssoRandomToken(64);
+    state=ssoRandomToken(24);
+    nonce=ssoRandomToken(24);
+    sessionStorage.setItem('wts_pkce_verifier',verifier);
+    sessionStorage.setItem('wts_pkce_state',state);
+    sessionStorage.setItem('wts_pkce_nonce',nonce);
+  }catch(e){
+    ssoStatus('Secure sign-in could not start. Please try again.');
+    return;
+  }
+  ssoStatus('Opening the official WTS sign-in…');
+  window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(function(digest){
+    var challenge=ssoBytesToBase64Url(new Uint8Array(digest));
+    var authorize=new URL('https://wts-school-platform.vercel.app/api/sso/authorize');
+    authorize.searchParams.set('response_type','code');
+    authorize.searchParams.set('client_id','result_portal');
+    authorize.searchParams.set('redirect_uri','https://wts-result-system.vercel.app/portal_core.html');
+    authorize.searchParams.set('scope','results');
+    authorize.searchParams.set('code_challenge',challenge);
+    authorize.searchParams.set('code_challenge_method','S256');
+    authorize.searchParams.set('state',state);
+    authorize.searchParams.set('nonce',nonce);
+    window.location.replace(authorize.toString());
+  }).catch(function(){
+    ssoClearTransientState();
+    ssoStatus('Secure sign-in could not start. Please try again.');
+  });
 }
 
 function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.result_user)throw {code:'RESULT_SESSION_NOT_ACTIVE'};
     loginSuccess(centralUserFromPayload(payload),'central');
-  }).catch(function(){showAuthScreen();});
+  }).catch(function(){
+    if(new URLSearchParams(window.location.search).get('code')){
+      completeResultSso();
+    }else{
+      startResultSso();
+    }
+  });
 }
+
 function showAuthScreen(){
   var a=document.getElementById('auth-screen');
   if(a)a.style.display='flex';
