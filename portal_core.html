@@ -1298,7 +1298,8 @@ function resultDataRequest(action,payload){
     return res.text().then(function(raw){
       var data={};
       try{data=raw?JSON.parse(raw):{};}catch(e){data={ok:false,code:'RESULT_API_INVALID_RESPONSE'};}
-      if(!res.ok){data.http_status=res.status;throw data;}
+      // A JSON 200 is not a successful write unless the protected API confirms it.
+      if(!res.ok||data.ok===false){data.http_status=res.status;throw data;}
       return data;
     });
   });
@@ -1389,7 +1390,7 @@ function restorePortalPageAfterLogin(){
     _trm=sessionStorage.getItem('wts_term');
   }catch(e){}
   if(_pg&&_pg!=='home'&&_cls&&_trm&&DEPTS[_cls]){
-    CLS=_cls;TERM=_trm;
+    CLS=_cls;TERM=window._activeServerTerm||_trm;
     setMode(true);
     loadClass(_cls,function(){
       var _ni=document.getElementById('ni-'+_pg)||document.getElementById('ni-dashboard');
@@ -1592,7 +1593,7 @@ function filterCardByClass(key){
       DB_STUDENTS[key]=res[0]||[];
       (res[1]||[]).forEach(function(s){
         if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
-        DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+        DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
       });
       (res[2]||[]).forEach(function(r){
         PUB_CACHE[pubKey(key,r.term,r.subject_index)]=true;
@@ -1698,6 +1699,7 @@ function nextAcademicSession(session){
 }
 function clearSessionCaches(){
   DB_STUDENTS={};DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
+  clearScoreDrafts();
   Object.keys(PUB_CACHE).forEach(function(k){delete PUB_CACHE[k];});
 }
 
@@ -1743,6 +1745,16 @@ function loadRemoteSettings(options){
     .then(function(rows){
       var byKey={};
       (Array.isArray(rows)?rows:[]).forEach(function(row){byKey[row.key]=row.value;});
+      // The protected Result authorizer uses public.settings.term as the
+      // active write context. Keep the client default aligned with that
+      // server value; a user can still explicitly select a historical term
+      // for read-only work.
+      var serverTerm=String(byKey.term||'').trim();
+      window._activeServerTerm=serverTerm||DEFAULT_TERM;
+      if(serverTerm&&!IN_CLASS&&TERM!==serverTerm){
+        TERM=serverTerm;
+        clearSessionCaches();
+      }
       if(byKey.gemini_key){
         window._geminiKey=byKey.gemini_key;
         var ki=document.getElementById('gemini-key-input');
@@ -2178,6 +2190,22 @@ var DB_TRAITS={};    // studentId -> {affective:{},psychomotor:{}}
 var DB_FEES={};      // studentId -> {}
 var DB_REMARKS={};   // studentId -> {}
 var CHARTS={};
+var SCORE_DRAFTS={};          // key -> values entered but not confirmed by server
+var SCORE_SAVE_TIMERS={};     // key -> debounce timer
+var SCORE_SAVE_VERSIONS={};   // key -> latest local draft version
+
+function scoreCellValue(value){
+  return value===null||value===undefined?'':value;
+}
+function scoreDraftKey(studentId,subjectIdx){
+  return String(studentId)+'|'+String(subjectIdx);
+}
+function clearScoreDrafts(){
+  Object.keys(SCORE_SAVE_TIMERS).forEach(function(key){clearTimeout(SCORE_SAVE_TIMERS[key]);});
+  SCORE_DRAFTS={};
+  SCORE_SAVE_TIMERS={};
+  SCORE_SAVE_VERSIONS={};
+}
 
 
 function showLoad(msg){
@@ -2226,7 +2254,7 @@ function loadClass(key,cb,silent){
       (Array.isArray(res[0])?res[0]:[]).forEach(function(score){
         if(!DB_SCORES[score.student_id])DB_SCORES[score.student_id]={};
         DB_SCORES[score.student_id][score.subject_index]={
-          ca1:score.ca1||'',ca2:score.ca2||'',ca3:score.ca3||'',exam:score.exam||''
+          ca1:scoreCellValue(score.ca1),ca2:scoreCellValue(score.ca2),ca3:scoreCellValue(score.ca3),exam:scoreCellValue(score.exam)
         };
       });
       (Array.isArray(res[1])?res[1]:[]).forEach(function(trait){
@@ -2268,7 +2296,7 @@ function loadStudentData(sid,cb){
   ]).then(function(res){
     var scoreMap={};
     (res[0]||[]).forEach(function(s){
-      scoreMap[s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+      scoreMap[s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
     });
     DB_SCORES[sid]=scoreMap;
     var traitMap={affective:{},psychomotor:{}};
@@ -2423,6 +2451,7 @@ function confirmTerm(term){
   TERM=term;
   // Reset stale data
   DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
+  clearScoreDrafts();
   Object.keys(PUB_CACHE).forEach(function(k){delete PUB_CACHE[k];});
   // Reset card/card selector
   var rcStu=document.getElementById('rc-stu');
@@ -2448,6 +2477,7 @@ function changeTerm(newTerm){
   TERM=newTerm;
   // Clear ALL cached score/trait/fee/remark data to force fresh load
   DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
+  clearScoreDrafts();
   // Clear published cache for this class
   Object.keys(PUB_CACHE).forEach(function(k){
     if(k.startsWith(CLS+'|'))delete PUB_CACHE[k];
@@ -2720,6 +2750,93 @@ function renderScoreGrid(){
   });
 }
 
+function scorePersisted(studentId,subjectIdx){
+  return ((DB_SCORES[studentId]||{})[subjectIdx])||{ca1:null,ca2:null,ca3:null,exam:null};
+}
+function scoreDraft(studentId,subjectIdx){
+  var key=scoreDraftKey(studentId,subjectIdx);
+  var persisted=scorePersisted(studentId,subjectIdx);
+  return Object.assign({ca1:null,ca2:null,ca3:null,exam:null},persisted,SCORE_DRAFTS[key]||{});
+}
+function scoreNumber(value){
+  if(value===''||value===null||value===undefined)return null;
+  var number=Number(value);
+  return isFinite(number)?number:null;
+}
+function scoreStatus(studentId,subjectIdx,text,color){
+  var el=document.getElementById('ss-'+studentId+'-'+subjectIdx);
+  if(!el)return;
+  el.textContent=text;
+  el.style.color=color||'var(--gray)';
+}
+function updateScoreDisplay(studentId,subjectIdx,score){
+  var total=computeTotal(score);
+  var grade=getGrade(total);
+  var totalEl=document.getElementById('st-'+studentId);
+  if(totalEl)totalEl.textContent=total!==''?total:'--';
+  var gradeEl=document.getElementById('sg-'+studentId);
+  var remarkEl=document.getElementById('sr-'+studentId);
+  if(gradeEl){gradeEl.textContent=total!==''?grade.g:'--';gradeEl.style.color=total!==''?grade.c:'#aaa';}
+  if(remarkEl){remarkEl.textContent=total!==''?grade.r:'--';remarkEl.style.color=total!==''?grade.c:'#aaa';}
+}
+function syncScoreInputs(studentId,score){
+  document.querySelectorAll('#sheet-rows .sc-inp').forEach(function(input){
+    if(input.getAttribute('data-sid')!==String(studentId))return;
+    var field=input.getAttribute('data-field');
+    input.value=scoreCellValue(score[field]);
+  });
+}
+function confirmedScoreResponse(studentId,subjectIdx,response,version){
+  if(!response||response.ok!==true||response.persisted!==true||!response.score){
+    throw response||{code:'RESULT_SCORE_SAVE_FAILED'};
+  }
+  var score={
+    ca1:scoreCellValue(response.score.ca1),
+    ca2:scoreCellValue(response.score.ca2),
+    ca3:scoreCellValue(response.score.ca3),
+    exam:scoreCellValue(response.score.exam)
+  };
+  if(!DB_SCORES[studentId])DB_SCORES[studentId]={};
+  DB_SCORES[studentId][subjectIdx]=score;
+  var key=scoreDraftKey(studentId,subjectIdx);
+  if(SCORE_SAVE_VERSIONS[key]===version){
+    delete SCORE_DRAFTS[key];
+    syncScoreInputs(studentId,score);
+    updateScoreDisplay(studentId,subjectIdx,score);
+    scoreStatus(studentId,subjectIdx,'Saved','var(--g1)');
+  }else{
+    queueScoreSave(studentId,subjectIdx);
+  }
+  return response;
+}
+function scoreSaveMessage(error){
+  var code=error&&error.code;
+  if(code==='RESULT_TERM_NOT_ACTIVE')return 'Save failed — not recorded: select the active term.';
+  if(code==='RESULT_ACADEMIC_SESSION_NOT_ACTIVE')return 'Save failed — not recorded: select the active session.';
+  if(code==='RESULT_CLASS_SCOPE_DENIED'||code==='RESULT_SUBJECT_SCOPE_DENIED')return 'Save failed — not recorded: this class or subject is not assigned.';
+  if(code==='RESULT_PERMISSION_DENIED')return 'Save failed — not recorded: score-entry permission is required.';
+  return 'Save failed — not recorded';
+}
+function queueScoreSave(studentId,subjectIdx){
+  var key=scoreDraftKey(studentId,subjectIdx);
+  clearTimeout(SCORE_SAVE_TIMERS[key]);
+  SCORE_SAVE_TIMERS[key]=setTimeout(function(){
+    var version=SCORE_SAVE_VERSIONS[key]||0;
+    var score=scoreDraft(studentId,subjectIdx);
+    scoreStatus(studentId,subjectIdx,'Saving…','var(--gold2)');
+    dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam)
+      .then(function(response){
+        return confirmedScoreResponse(studentId,subjectIdx,response,version);
+      })
+      .catch(function(error){
+        if(SCORE_SAVE_VERSIONS[key]===version){
+          scoreStatus(studentId,subjectIdx,'Save failed — not recorded','#991b1b');
+          showToast(scoreSaveMessage(error),'error');
+        }
+        console.error('Score save failed:',error);
+      });
+  },1500);
+}
 function openSheet(idx){
   var students=DB_STUDENTS[CLS]||[];
   var subjs=subjects();
@@ -2735,64 +2852,51 @@ function openSheet(idx){
   btn.className=isPub?'btn btn-outline':'btn btn-primary';
   var html='';
   students.forEach(function(s,rowIdx){
-    var sc=(DB_SCORES[s.id]||{})[idx]||{};
-    var t=computeTotal(sc);var gd=getGrade(t);
+    var sc=scorePersisted(s.id,idx);
+    var total=computeTotal(sc);var grade=getGrade(total);
     html+='<div class="sheet-row" style="background:'+(rowIdx%2===0?'#fff':'#fafafa')+'">'
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
-      +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'</span>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+(sc.ca1||'')+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+(sc.ca2||'')+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2"/>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+(sc.ca3||'')+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3"/>'
-      +'<input class="sc-inp" type="number" min="0" max="70" value="'+(sc.exam||'')+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
-      +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(t!==''?t:'--')+'</span>'
-      +'<span id="sg-'+s.id+'" style="text-align:center;font-weight:700;font-size:.78rem;color:'+(t!==''?gd.c:'#aaa')+'">'+(gd.g||'--')+'</span>'
-      +'<span id="sr-'+s.id+'" style="text-align:center;font-size:.75rem;color:'+(t!==''?gd.c:'#aaa')+'">'+(gd.r||'--')+'</span>'
+      +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
+      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
+      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2"/>'
+      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3"/>'
+      +'<input class="sc-inp" type="number" min="0" max="70" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
+      +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(total!==''?total:'--')+'</span>'
+      +'<span id="sg-'+s.id+'" style="text-align:center;font-weight:700;font-size:.78rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.g||'--')+'</span>'
+      +'<span id="sr-'+s.id+'" style="text-align:center;font-size:.75rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.r||'--')+'</span>'
       +'</div>';
   });
   document.getElementById('sheet-rows').innerHTML=html;
-  // Attach input handlers
   document.querySelectorAll('#sheet-rows .sc-inp').forEach(function(inp){
     inp.addEventListener('input',function(){
       var sid=inp.getAttribute('data-sid');
       var field=inp.getAttribute('data-field');
       var max=field==='exam'?70:10;
-      var raw=Number(inp.value)||0;
-      inp.classList.toggle('over-limit',raw>max);
-      if(raw>max){showToast('Max '+(field==='exam'?'Exam':'CA')+' is '+max,'error');return;}
-      if(!DB_SCORES[sid])DB_SCORES[sid]={};
-      if(!DB_SCORES[sid][idx])DB_SCORES[sid][idx]={ca1:'',ca2:'',ca3:'',exam:''};
-      DB_SCORES[sid][idx][field]=Math.min(max,Math.max(0,raw));
-      var t=computeTotal(DB_SCORES[sid][idx]);
-      var gd=getGrade(t);
-      var totEl=document.getElementById('st-'+sid);
-      if(totEl)totEl.textContent=t!==''?t:'--';
-      var grEl=document.getElementById('sg-'+sid);
-      var rmEl=document.getElementById('sr-'+sid);
-      if(grEl){grEl.textContent=t!==''?gd.g:'--';grEl.style.color=t!==''?gd.c:'#aaa';}
-      if(rmEl){rmEl.textContent=t!==''?gd.r:'--';rmEl.style.color=t!==''?gd.c:'#aaa';}
-      // Auto-save after 1.5s
-      clearTimeout(inp._timer);
-      inp._timer=setTimeout(function(){
-        var scoreData={student_id:sid,class_key:CLS,subject_index:idx,term:TERM,
-          ca1:DB_SCORES[sid][idx].ca1,ca2:DB_SCORES[sid][idx].ca2,
-          ca3:DB_SCORES[sid][idx].ca3,exam:DB_SCORES[sid][idx].exam};
-        dbUpsertScore(sid,idx,scoreData.ca1,scoreData.ca2,scoreData.ca3,scoreData.exam)
-          .then(function(res){
-            if(res&&res.ok===false){
-              console.error('Score save error:',JSON.stringify(res));
-              showToast('Score error: '+res.message,'error');
-            }
-          })
-          .catch(function(e){
-            console.error('Score save catch:',e);
-            showToast('Score save failed','error');
-          });
-      },1500);
+      var raw=inp.value.trim()===''?null:Number(inp.value);
+      if(raw!==null&&!isFinite(raw)){
+        scoreStatus(sid,idx,'Save failed — not recorded','#991b1b');
+        return;
+      }
+      if(raw!==null&&raw>max){
+        inp.classList.add('over-limit');
+        showToast('Max '+(field==='exam'?'Exam':'CA')+' is '+max,'error');
+        return;
+      }
+      inp.classList.remove('over-limit');
+      var key=scoreDraftKey(sid,idx);
+      var draft=scoreDraft(sid,idx);
+      draft[field]=raw;
+      SCORE_DRAFTS[key]=draft;
+      SCORE_SAVE_VERSIONS[key]=(SCORE_SAVE_VERSIONS[key]||0)+1;
+      scoreStatus(sid,idx,'Saving…','var(--gold2)');
+      updateScoreDisplay(sid,idx,draft);
+      queueScoreSave(sid,idx);
     });
   });
 }
 
 function closeSheet(){
+
   currentSheetIdx=-1;
   document.getElementById('scores-sheet-view').style.display='none';
   document.getElementById('scores-grid-view').style.display='block';
@@ -2800,8 +2904,12 @@ function closeSheet(){
 }
 
 function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
-  // Convert empty strings to null - Supabase numeric fields reject ''
-  function n(v){return (v===''||v===null||v===undefined)?null:Number(v);}
+  // Convert empty strings to null; never send NaN or a browser-only value.
+  function n(v){
+    if(v===''||v===null||v===undefined)return null;
+    var number=Number(v);
+    return isFinite(number)?number:null;
+  }
   var d={ca1:n(ca1),ca2:n(ca2),ca3:n(ca3),exam:n(exam)};
   var ck=dbClassKey(CLS);
   if(isCentralAuth()){
@@ -2817,22 +2925,28 @@ function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
   return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
 }
 function saveDraft(){
-  var idx=currentSheetIdx;if(idx<0)return;
+  var idx=currentSheetIdx;
+  if(idx<0)return;
   var students=DB_STUDENTS[CLS]||[];
-  showLoad('Saving...');
-  Promise.all(students.map(function(s){
-    var sc=(DB_SCORES[s.id]||{})[idx]||{ca1:'',ca2:'',ca3:'',exam:''};
-    return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam);
-  })).then(function(results){
-    var errors=results.filter(function(r){return r&&r.ok===false;});
-    if(errors.length){
-      console.error('Draft save errors:',JSON.stringify(errors[0]));
-      hideLoad();showToast('Save error: '+errors[0].message,'error');
-    }else{hideLoad();showToast('Draft saved');}
-  })
-  .catch(function(e){
-    console.error('saveDraft catch:',e);
-    hideLoad();showToast('Save failed - check console','error');
+  showLoad('Saving…');
+  var jobs=students.map(function(student){
+    var key=scoreDraftKey(student.id,idx);
+    clearTimeout(SCORE_SAVE_TIMERS[key]);
+    SCORE_SAVE_VERSIONS[key]=(SCORE_SAVE_VERSIONS[key]||0)+1;
+    var version=SCORE_SAVE_VERSIONS[key];
+    var score=scoreDraft(student.id,idx);
+    scoreStatus(student.id,idx,'Saving…','var(--gold2)');
+    return dbUpsertScore(student.id,idx,score.ca1,score.ca2,score.ca3,score.exam)
+      .then(function(response){
+        return confirmedScoreResponse(student.id,idx,response,version);
+      });
+  });
+  Promise.all(jobs).then(function(){
+    hideLoad();
+    showToast('Saved');
+  }).catch(function(error){
+    hideLoad();
+    showToast(scoreSaveMessage(error),'error');
   });
 }
 
@@ -3015,7 +3129,7 @@ function refreshBroadsheet(){
     dbGet('published_subjects?class_key=eq.'+encodeURIComponent(dbClassKey(CLS))+'&term=eq.'+encodeURIComponent(TERM))
   ]).then(function(res){
     DB_SCORES={};
-    (res[0]||[]).forEach(function(s){if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};});
+    (res[0]||[]).forEach(function(s){if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};});
     Object.keys(PUB_CACHE).forEach(function(k){if(k.startsWith(CLS+'|'+TERM+'|'))delete PUB_CACHE[k];});
     (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(CLS,r.term,r.subject_index)]=true;});
     hideLoad();renderBroadsheet();showToast('Broadsheet refreshed');
@@ -3029,7 +3143,7 @@ function refreshCard(){
     dbGet('published_subjects?class_key=eq.'+encodeURIComponent(dbClassKey(CLS))+'&term=eq.'+encodeURIComponent(TERM))
   ]).then(function(res){
     DB_SCORES={};
-    (res[0]||[]).forEach(function(s){if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};});
+    (res[0]||[]).forEach(function(s){if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};});
     Object.keys(PUB_CACHE).forEach(function(k){if(k.startsWith(CLS+'|'+TERM+'|'))delete PUB_CACHE[k];});
     (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(CLS,r.term,r.subject_index)]=true;});
     hideLoad();populateCardSel();
@@ -3219,7 +3333,7 @@ function refreshProgress(){
     DB_SCORES={};
     (res[0]||[]).forEach(function(s){
       if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
-      DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+      DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
     });
     Object.keys(PUB_CACHE).forEach(function(k){if(k.startsWith(CLS+'|'+TERM+'|'))delete PUB_CACHE[k];});
     (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(CLS,r.term,r.subject_index)]=true;});
@@ -3394,7 +3508,7 @@ function renderCard(){
     // Build isolated score map for this term only
     var scoreMap={};
     (res[0]||[]).forEach(function(s){
-      scoreMap[s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+      scoreMap[s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
     });
     // Build isolated traits
     var traitMap={affective:{},psychomotor:{}};
@@ -3440,7 +3554,7 @@ function printAll(){
     var allScores={};var allTraits={};var allFees={};var allRemarks={};
     (res[0]||[]).forEach(function(s){
       if(!allScores[s.student_id])allScores[s.student_id]={};
-      allScores[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+      allScores[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
     });
     (res[1]||[]).forEach(function(t){
       if(!allTraits[t.student_id])allTraits[t.student_id]={affective:{},psychomotor:{}};
@@ -3721,7 +3835,7 @@ function changeAnalyticsClass(key){
       DB_STUDENTS[key]=res[0]||[];
       (res[1]||[]).forEach(function(s){
         if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
-        DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+        DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
       });
       (res[2]||[]).forEach(function(r){PUB_CACHE[pubKey(key,r.term,r.subject_index)]=true;});
       hideLoad();renderAnalytics();
@@ -3738,7 +3852,7 @@ function changeAnalyticsClass(key){
       ]).then(function(res){
         (res[0]||[]).forEach(function(s){
           if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
-          DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+          DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
         });
         (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(key,r.term,r.subject_index)]=true;});
         hideLoad();renderAnalytics();
@@ -3767,7 +3881,7 @@ function changeAnalyticsTerm(newTerm){
   ]).then(function(res){
     (res[0]||[]).forEach(function(s){
       if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
-      DB_SCORES[s.student_id][s.subject_index]={ca1:s.ca1||'',ca2:s.ca2||'',ca3:s.ca3||'',exam:s.exam||''};
+      DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
     });
     (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(CLS,r.term,r.subject_index)]=true;});
     hideLoad();renderAnalytics();
