@@ -1762,6 +1762,7 @@ function loadRemoteSettings(options){
       }
       if(byKey.app_config){
         var remoteCfg=JSON.parse(byKey.app_config);
+        if(serverTerm)remoteCfg.term=serverTerm;
         window._remoteCfg=remoteCfg;
          if(previousSession!==(remoteCfg.session||DEFAULT_SESSION))clearSessionCaches();
         var labels=[
