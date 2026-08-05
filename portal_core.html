@@ -3994,7 +3994,7 @@ function renderAnalytics(){
   var bar=document.getElementById('an-class-term-bar');
   if(bar)bar.textContent=clsLabel+' - '+TERM;
   var tbSub=document.getElementById('tb-sub');
-  if(tbSub)tbSub.textContent=clsLabel+' - Analytics';
+  if(tbSub)tbSub.textContent=clsLabel+' - Analytics · '+TERM+' · '+getActiveSession();
   if(!students.length){
     document.getElementById('an-avg').textContent='--';
     document.getElementById('an-pass').textContent='--';
