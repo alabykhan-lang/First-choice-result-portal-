@@ -464,6 +464,50 @@ body.result-context-read-only #sheet-rows .sc-inp{pointer-events:none;opacity:.6
 body.result-context-read-only #save-draft-btn,body.result-context-read-only #publish-btn,body.result-context-read-only #scan-record-btn{opacity:.5;pointer-events:none}
 .result-read-only-note{display:none;margin:0 0 13px;padding:10px 12px;border-left:3px solid var(--gold);border-radius:8px;background:#fff8e9;color:#725d37;font-size:.75rem;line-height:1.45}
 body.result-context-read-only .result-read-only-note{display:block}
+
+/* Read-only archive browser */
+.archive-session-list{display:grid;gap:10px;padding:16px}
+.archive-session{border:1px solid var(--border);border-radius:14px;background:#fbfffd;overflow:hidden;transition:.18s}
+.archive-session.open{border-color:rgba(125,212,176,.8);box-shadow:0 5px 18px rgba(26,42,74,.08)}
+.archive-session-toggle{width:100%;display:flex;align-items:center;gap:12px;padding:15px 16px;background:transparent;border:0;color:var(--g1);font:inherit;text-align:left;cursor:pointer}
+.archive-session-toggle:hover{background:#f0fdf4}
+.archive-session-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--g1);color:var(--gold2);font-weight:800;font-size:.72rem;flex-shrink:0}
+.archive-session-copy{flex:1;min-width:0}
+.archive-session-copy strong{display:block;font-size:.96rem}
+.archive-session-copy small{display:block;margin-top:3px;color:var(--gray);font-size:.7rem}
+.archive-session-chevron{font-size:1.1rem;color:var(--g1);transition:transform .18s}
+.archive-session.open .archive-session-chevron{transform:rotate(180deg)}
+.archive-session-terms{display:none;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;padding:0 12px 12px;border-top:1px solid var(--border)}
+.archive-session.open .archive-session-terms{display:grid}
+.archive-term-button{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--g1);font:inherit;text-align:left;cursor:pointer}
+.archive-term-button:hover,.archive-term-button.active{border-color:var(--g3);background:#f0fdf4}
+.archive-term-button strong{font-size:.8rem}
+.archive-term-button small{display:block;margin-top:2px;color:var(--gray);font-size:.67rem}
+.archive-term-arrow{font-size:1rem;color:var(--g3);font-weight:800}
+.archive-class-browser{display:grid;gap:20px;padding:16px}
+.archive-class-group{display:grid;gap:10px}
+.archive-class-group-title{display:flex;align-items:center;gap:9px;color:var(--gray);font-family:'Playfair Display',serif;font-size:.86rem;text-transform:uppercase;letter-spacing:.06em}
+.archive-class-group-title::before{content:"";width:3px;height:18px;border-radius:3px;background:var(--gold)}
+.archive-class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+.archive-class-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:110px;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--g1);text-align:left;cursor:pointer;box-shadow:var(--shadow);transition:.18s}
+.archive-class-card:hover{border-color:var(--g3);background:#f0fdf4;transform:translateY(-1px)}
+.archive-class-card strong{font-size:.86rem;line-height:1.25}
+.archive-class-card small{color:var(--gray);font-size:.68rem;line-height:1.35}
+body.result-context-read-only #page-students .tbl-head .btn,
+body.result-context-read-only #page-students th:last-child,
+body.result-context-read-only #page-students td:last-child{display:none}
+body.result-context-read-only #page-students .data-table{table-layout:auto}
+body.result-context-read-only #page-scores .sec-title{color:var(--g1)}
+body.result-context-read-only #page-profile .btn-primary,
+body.result-context-read-only #page-profile .btn-danger{display:none}
+.results-history-readable{display:none}
+body.results-management-mode .results-history-readable,
+body.result-context-read-only .results-history-readable{display:flex}
+@media(max-width:600px){
+  .archive-session-terms{grid-template-columns:1fr}
+  .archive-class-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 </style>
 </head>
 <body>
@@ -542,11 +586,11 @@ body.result-context-read-only .result-read-only-note{display:block}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
       Broadsheet
     </div>
-    <div class="ni results-management-only" id="ni-progress" onclick="navTo('progress',this)">
+    <div class="ni results-history-readable" id="ni-progress" onclick="navTo('progress',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/></svg>
       Progress
     </div>
-    <div class="ni results-management-only" id="ni-card" onclick="navTo('card',this)">
+    <div class="ni results-history-readable" id="ni-card" onclick="navTo('card',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Result Cards
     </div>
@@ -680,11 +724,11 @@ body.result-context-read-only .result-read-only-note{display:block}
       <div class="result-read-only-note" style="display:block">Archive mode: all records on this page are read-only. The official current session and term remain managed by Central Registry.</div>
       <div class="tbl-wrap" style="margin-bottom:18px">
         <div class="tbl-head"><h3>Past sessions and terms</h3><span style="font-size:.72rem;color:var(--gray)" id="history-context-count">Loading…</span></div>
-        <div id="history-contexts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;padding:16px"><div class="empty"><h3>Loading archive</h3><p>Reading saved academic history…</p></div></div>
+        <div id="history-contexts" class="archive-session-list"><div class="empty"><h3>Loading archive</h3><p>Reading saved academic history…</p></div></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:18px">
-        <div class="tbl-head"><h3 id="history-section-title">Select a past session</h3><span style="font-size:.72rem;color:var(--gray)" id="history-section-meta">No section selected</span></div>
-        <div id="history-sections" style="display:flex;gap:8px;flex-wrap:wrap;padding:16px"><div class="empty">Choose a past session above to view its sections.</div></div>
+        <div class="tbl-head"><h3 id="history-section-title">Academic records</h3><span style="font-size:.72rem;color:var(--gray)" id="history-section-meta">Choose a session and term</span></div>
+        <div id="history-sections" class="archive-class-browser"><div class="empty">Expand a past session, choose a term, then open a class record.</div></div>
       </div>
       <div class="tbl-wrap">
         <div class="tbl-head"><h3 id="history-student-title">Archive records</h3><span style="font-size:.72rem;color:var(--gray)" id="history-student-meta">Read-only</span></div>
@@ -730,7 +774,7 @@ body.result-context-read-only .result-read-only-note{display:block}
   <!-- SCORES -->
   <div class="page" id="page-scores">
     <div id="scores-grid-view">
-      <p class="sec-title">Select a Subject to Enter Scores</p>
+      <p class="sec-title" id="score-grid-heading">Select a Subject to Enter Scores</p>
       <div class="subj-grid" id="subj-cards"></div>
     </div>
     <div id="scores-sheet-view" style="display:none">
@@ -1369,6 +1413,11 @@ function resultActionRequest(action,payload){
     ? resultDataRequest(action,payload||{})
     : Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
 }
+function readOnlyOrAction(action,payload){
+  return CONTEXT_READ_ONLY
+    ? Promise.resolve({ok:true,read_only:true})
+    : resultActionRequest(action,payload||{});
+}
 
 function centralUserFromPayload(payload){
   var resultUser=payload&&payload.result_user?payload.result_user:{};
@@ -1713,7 +1762,7 @@ function centralResultRead(path){
   if(!payload.class_key&&CLS)payload.class_key=dbClassKey(CLS);
   if(!payload.academic_session)payload.academic_session=getActiveSession();
   if(!payload.term&&['scores','traits','remarks','fees','published_subjects'].indexOf(resource)>-1)payload.term=TERM;
-  var readAction=(CONTEXT_READ_ONLY&&resource==='students')?'history.students':'read.'+resource;
+  var readAction=CONTEXT_READ_ONLY?'history.'+resource:'read.'+resource;
   return resultDataRequest(readAction,payload).then(function(result){
     return Array.isArray(result.rows)?result.rows:[];
   }).catch(function(error){
@@ -1831,12 +1880,13 @@ function persistSelectedContext(){
     sessionStorage.setItem('wts_term',TERM);
   }catch(e){}
 }
-function setResultContext(classKey,session,term){
+function setResultContext(classKey,session,term,readOnly){
   if(!isCentralAuth())return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
   var selectedSession=String(session||'').trim();
   var selectedTerm=String(term||'').trim();
   if(!classKey||!selectedSession||!selectedTerm)return Promise.reject({code:'RESULT_CONTEXT_INVALID'});
-  return resultDataRequest('context.set',{
+  var historicalContext=Boolean(readOnly||CONTEXT_READ_ONLY);
+  return resultDataRequest(historicalContext?'history.context.set':'context.set',{
     class_key:dbClassKey(classKey,selectedSession),
     academic_session:selectedSession,
     term:selectedTerm
@@ -2504,7 +2554,8 @@ function setMode(inClass){
 
 function navTo(id,el){
   var required={card:'report_cards.generate',settings:'result_settings.manage',progress:'results.export'}[id];
-  if(required&&!hasResultPermission(required)){
+  var historicalReadEntry=CONTEXT_READ_ONLY&&(id==='card'||id==='progress');
+  if(required&&!historicalReadEntry&&!hasResultPermission(required)){
     showToast('This action is not assigned to the current account.','error');return;
   }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active','print-active');});
@@ -2515,7 +2566,7 @@ function navTo(id,el){
   pushHistory(id);
   try{sessionStorage.setItem('wts_page',id);}catch(e){}
   if(IN_CLASS)persistSelectedContext();
-  if(id==='card'||id==='broadsheet'||id==='progress')pg.classList.add('print-active');
+  if(id==='card'||id==='broadsheet'||id==='progress'||id==='analytics')pg.classList.add('print-active');
   if(el)el.classList.add('active');
   var titles={
     home:'Home', history:'Archive & History', dashboard:'Dashboard', students:'Student Roster',
@@ -2621,7 +2672,7 @@ function applyClassContext(key,selectedSession,selectedTerm,readOnly){
   CONTEXT_EXPLICIT=true;
   CONTEXT_READ_ONLY=!!readOnly;
   showLoad('Validating academic context...');
-  setResultContext(key,selectedSession,selectedTerm).then(function(){
+  setResultContext(key,selectedSession,selectedTerm,readOnly).then(function(){
     closeModal('modal-term');
     DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
     clearScoreDrafts();
@@ -2749,36 +2800,68 @@ function loadHistoryDashboard(){
     showToast('The read-only archive could not be loaded.','error');
   });
 }
+
 function renderHistoryContexts(){
   var el=document.getElementById('history-contexts');
   var count=document.getElementById('history-context-count');
   if(!el)return;
   var contexts=Array.isArray(HISTORY_DATA.contexts)?HISTORY_DATA.contexts:[];
-  if(count)count.textContent=contexts.length+' saved context'+(contexts.length===1?'':'s');
-  var html=contexts.map(function(item,index){
-    var session=String(item.academic_session||'');
-    var term=String(item.term||'');
-    return '<button type="button" class="archive-context-card" data-history-index="'+index+'">'
-      +'<span class="badge badge-blue">Read only</span>'
-      +'<strong>'+escapeHtml(session)+'</strong>'
-      +'<span>'+escapeHtml(term)+'</span>'
-      +'<small>'+Number(item.enrolled_students||0)+' preserved students'+(Number(item.graduating_students||0)?' · '+Number(item.graduating_students||0)+' graduating':'')+'</small>'
-      +'</button>';
+  var groups=[];
+  var bySession={};
+  contexts.forEach(function(item,index){
+    var session=String(item&&item.academic_session||'').trim();
+    if(!session)return;
+    if(!bySession[session]){
+      bySession[session]={session:session,terms:[]};
+      groups.push(bySession[session]);
+    }
+    bySession[session].terms.push({item:item,index:index});
+  });
+  if(count)count.textContent=groups.length+' saved session'+(groups.length===1?'':'s');
+  var html=groups.map(function(group,groupIndex){
+    var terms=group.terms.map(function(entry){
+      var item=entry.item;
+      var term=String(item.term||'');
+      var countText=Number(item.enrolled_students||0)+' preserved student'+(Number(item.enrolled_students||0)===1?'':'s');
+      if(Number(item.graduating_students||0))countText+=' · '+Number(item.graduating_students||0)+' graduating';
+      return '<button type="button" class="archive-term-button" data-history-term-index="'+entry.index+'">'
+        +'<span><strong>'+escapeHtml(term)+'</strong><small>'+escapeHtml(countText)+' · Read only</small></span>'
+        +'<span class="archive-term-arrow">&#8594;</span>'
+        +'</button>';
+    }).join('');
+    return '<article class="archive-session" data-history-session-card="'+groupIndex+'">'
+      +'<button type="button" class="archive-session-toggle" data-history-session-toggle="'+groupIndex+'" aria-expanded="false">'
+      +'<span class="archive-session-icon">&#128218;</span>'
+      +'<span class="archive-session-copy"><strong>'+escapeHtml(group.session)+'</strong><small>'+group.terms.length+' saved term'+(group.terms.length===1?'':'s')+' · preserved academic records</small></span>'
+      +'<span class="archive-session-chevron" aria-hidden="true">&#9662;</span>'
+      +'</button>'
+      +'<div class="archive-session-terms" data-history-session-terms="'+groupIndex+'">'+terms+'</div>'
+      +'</article>';
   }).join('');
   var graduateContext=contexts.find(function(item){return Number(item.graduating_students||0)>0;})
     ||(HISTORY_DATA.transitions||[])[0];
   if(graduateContext){
-    html+='<button type="button" class="archive-context-card archive-graduate-card" data-history-graduates="'+encodeURIComponent(String(graduateContext.source_session||graduateContext.academic_session||''))+'">'
+    var graduateSession=String(graduateContext.source_session||graduateContext.academic_session||'');
+    html+='<button type="button" class="archive-context-card archive-graduate-card" data-history-graduates="'+encodeURIComponent(graduateSession)+'">'
       +'<span class="badge badge-gold">Graduating archive</span>'
       +'<strong>Past graduating students</strong>'
-      +'<span>'+escapeHtml(String(graduateContext.source_session||graduateContext.academic_session||''))+'</span>'
+      +'<span>'+escapeHtml(graduateSession)+'</span>'
       +'<small>Read-only alumni record</small>'
       +'</button>';
   }
   el.innerHTML=html||'<div class="empty"><h3>No saved history yet</h3><p>Closed sessions will appear here after Central Registry archives them.</p></div>';
-  el.querySelectorAll('[data-history-index]').forEach(function(button){
+  el.querySelectorAll('[data-history-session-toggle]').forEach(function(toggle){
+    toggle.onclick=function(){
+      var id=toggle.getAttribute('data-history-session-toggle');
+      var card=el.querySelector('[data-history-session-card="'+id+'"]');
+      if(!card)return;
+      var open=card.classList.toggle('open');
+      toggle.setAttribute('aria-expanded',String(open));
+    };
+  });
+  el.querySelectorAll('[data-history-term-index]').forEach(function(button){
     button.onclick=function(){
-      var item=contexts[Number(button.getAttribute('data-history-index'))];
+      var item=contexts[Number(button.getAttribute('data-history-term-index'))];
       if(item)selectHistoryContext(item);
     };
   });
@@ -2794,19 +2877,34 @@ function selectHistoryContext(item){
   var meta=document.getElementById('history-section-meta');
   var sections=document.getElementById('history-sections');
   var students=document.getElementById('history-students');
-  if(title)title.textContent='Sections in '+session+' · '+term;
-  if(meta)meta.textContent='Read-only · '+Number(item.enrolled_students||0)+' preserved students';
-  if(students)students.innerHTML='<div class="empty" style="padding:25px">Choose a section to view the preserved roster.</div>';
+  if(title)title.textContent='Academic records · '+session;
+  if(meta)meta.textContent='Read-only · '+term+' · Choose a class to continue';
+  if(students)students.innerHTML='<div class="empty" style="padding:25px">Choose a class above to open its preserved Result Portal.</div>';
+  renderHistoricalClassBrowser(session,term);
+}
+function renderHistoricalClassBrowser(session,term){
+  var sections=document.getElementById('history-sections');
   if(!sections)return;
-  sections.innerHTML=ALL_CLASSES.map(function(key){
-    return '<button type="button" class="btn btn-outline btn-sm" data-history-class="'+key+'">'+escapeHtml(DEPTS[key]?DEPTS[key].label:key)+'</button>';
-  }).join('')+'<button type="button" class="btn btn-gold btn-sm" data-history-graduates="'+encodeURIComponent(session)+'">Graduating students</button>';
+  sections.className='archive-class-browser';
+  sections.innerHTML=HOME_GROUPS.map(function(group){
+    var cards=group.keys.map(function(key){
+      var d=DEPTS[key];
+      if(!d)return'';
+      return '<button type="button" class="archive-class-card" data-history-class="'+escapeHtml(key)+'">'
+        +'<span class="badge badge-blue">Read only</span>'
+        +'<strong>'+escapeHtml(d.label)+'</strong>'
+        +'<small>Open '+escapeHtml(term)+' academic record</small>'
+        +'</button>';
+    }).join('');
+    return '<section class="archive-class-group"><h4 class="archive-class-group-title">'+escapeHtml(group.grid==='hg-early'?'Early Years':group.grid==='hg-primary'?'Primary':group.grid==='hg-jss'?'Junior Secondary':'Senior Secondary')+'</h4><div class="archive-class-grid">'+cards+'</div></section>';
+  }).join('');
   sections.querySelectorAll('[data-history-class]').forEach(function(button){
-    button.onclick=function(){loadHistoryStudents(session,button.getAttribute('data-history-class'),false);};
+    button.onclick=function(){openHistoricalClass(button.getAttribute('data-history-class'),session,term);};
   });
-  sections.querySelectorAll('[data-history-graduates]').forEach(function(button){
-    button.onclick=function(){loadHistoryStudents(decodeURIComponent(button.getAttribute('data-history-graduates')||''),'',true);};
-  });
+}
+function openHistoricalClass(key,session,term){
+  if(!DEPTS[key]){showToast('Unknown historical class','error');return;}
+  applyClassContext(key,session,term,true);
 }
 function loadHistoryStudents(session,classKey,graduates){
   var title=document.getElementById('history-student-title');
@@ -2913,6 +3011,7 @@ function renderStudents(){
 }
 
 function openAddStudent(){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   photoDataURL='';
   document.getElementById('modal-title').textContent='Add Student';
   document.getElementById('edit-id').value='';
@@ -2923,6 +3022,7 @@ function openAddStudent(){
   document.getElementById('modal-stu').style.display='flex';
 }
 function openEditStu(id){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   var s=(DB_STUDENTS[CLS]||[]).find(function(x){return x.id===id;});
   if(!s)return;
   document.getElementById('modal-title').textContent='Edit Student';
@@ -2969,6 +3069,7 @@ function clearPhoto(){
   document.getElementById('clear-photo-btn').style.display='none';
 }
 function saveStu(){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   var name=document.getElementById('in-name').value.trim();
   var gender=document.getElementById('in-gender').value;
   if(!name||!gender){alert('Name and gender required.');return;}
@@ -3002,6 +3103,7 @@ function saveStu(){
   showToast('Use WTS Staff Login for protected student administration.','error');
 }
 function deleteStu(id){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   if(!confirm('Delete this student and all their records?'))return;
   showLoad('Deleting...');
   if(isCentralAuth()){
@@ -3026,6 +3128,8 @@ function renderScoreGrid(){
   var students=DB_STUDENTS[CLS]||[];
   var subjs=subjects();
   var el=document.getElementById('subj-cards');
+  var scoreHeading=document.getElementById('score-grid-heading');
+  if(scoreHeading)scoreHeading.textContent=CONTEXT_READ_ONLY?'View Subject Scores':'Select a Subject to Enter Scores';
   document.getElementById('scores-grid-view').style.display='block';
   document.getElementById('scores-sheet-view').style.display='none';
   if(!students.length){
@@ -3395,6 +3499,7 @@ function pfAbsent(){
   document.getElementById('pf-att-absent').value=Math.max(0,op-pr);
 }
 function saveProfile(){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   var sid=currentProfileSid;if(!sid)return;
   var op=Number(document.getElementById('pf-att-open').value||0);
   var pr=Number(document.getElementById('pf-att-present').value||0);
@@ -3474,7 +3579,7 @@ function refreshCard(options){
   return promise;
 }
 function printBroadsheet(){
-  resultActionRequest('results.export',{
+  readOnlyOrAction('results.export',{
     class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()
   }).then(function(){window.print();}).catch(function(){showToast('Export permission required','error');});
 }
@@ -3579,7 +3684,7 @@ function renderBroadsheet(){
   document.getElementById('bs-wrap').innerHTML=html;
 }
 function exportBroadsheet(){
-  resultActionRequest('results.export',{
+  readOnlyOrAction('results.export',{
     class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()
   }).then(exportBroadsheetNow).catch(function(){showToast('Export permission required','error');});
 }
@@ -3731,7 +3836,7 @@ function renderProgress(){
   wrap.innerHTML=sheets.join('');
 }
 function printProgress(){
-  resultActionRequest('results.export',{
+  readOnlyOrAction('results.export',{
     class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()
   }).then(function(){renderProgress();window.print();}).catch(function(){showToast('Export permission required','error');});
 }
@@ -3818,7 +3923,7 @@ function renderCard(){
   var rct=document.getElementById('rc-term');if(rct)rct.value=cardTerm;
   var rcs=document.getElementById('rc-session');if(rcs)rcs.value=session;
   showLoad('Building card...');
-  var request=resultActionRequest('report_cards.generate',{
+  var request=readOnlyOrAction('report_cards.generate',{
     class_key:dbClassKey(CLS,session),term:cardTerm,academic_session:session
   }).then(function(){return Promise.all([
     dbGet('scores?student_id=eq.'+sid+'&term=eq.'+encodeURIComponent(cardTerm)),
@@ -3856,7 +3961,7 @@ function printAll(){
   var wrap=document.getElementById('rc-wrap');
   showLoad('Loading all cards for '+cardTerm+'...');
   // Fetch all data for this class+term in bulk
-  resultActionRequest('report_cards.generate',{
+  readOnlyOrAction('report_cards.generate',{
     class_key:dbClassKey(CLS),term:cardTerm,academic_session:session
   }).then(function(){return Promise.all([
     dbGet('scores?class_key=eq.'+encodeURIComponent(dbClassKey(CLS))+'&term=eq.'+encodeURIComponent(cardTerm)),
@@ -4136,6 +4241,20 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
 // ============================================================
 // ANALYTICS
 // ============================================================
+
+function printAnalytics(){
+  if(!DB_STUDENTS[CLS]||!DB_STUDENTS[CLS].length){showToast('No records to print','error');return;}
+  readOnlyOrAction('results.export',{class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()})
+    .then(function(){window.print();})
+    .catch(function(){showToast('Export permission required','error');});
+}
+function printSubjectAwards(){
+  if(!DB_STUDENTS[CLS]||!DB_STUDENTS[CLS].length){showToast('No records to print','error');return;}
+  readOnlyOrAction('results.export',{class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()})
+    .then(function(){window.print();})
+    .catch(function(){showToast('Export permission required','error');});
+}
+
 function destroyChart(id){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}}
 function changeAnalyticsClass(key){
   if(!key)return;
