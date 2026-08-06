@@ -443,6 +443,21 @@ body.results-management-mode .results-management-only-bn{display:flex}
 .central-management-only{display:none}
 body.central-management-mode .central-management-only{display:flex}
 #auth-screen .auth-body > .auth-field{display:none}
+/* Central Registry context presentation */
+.official-context-label{display:inline-flex;align-items:center;gap:6px;max-width:260px;padding:5px 9px;border:1px solid var(--border);border-radius:999px;background:#f7fbf8;color:var(--g1);font-size:.67rem;font-weight:700;white-space:nowrap}
+.official-context-label::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--g3);box-shadow:0 0 0 3px rgba(125,212,176,.2)}
+.result-context-current{padding:15px;border:1px solid rgba(125,212,176,.5);border-radius:12px;background:#f0fdf4;text-align:center}
+.result-context-current span{display:block;color:var(--g3);font-size:.65rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.result-context-current strong{display:block;margin-top:6px;color:var(--g1);font-size:1rem}
+.result-context-current small{display:block;margin-top:5px;color:var(--gray);font-size:.72rem;line-height:1.4}
+.result-history-picker{margin-top:18px;padding-top:17px;border-top:1px solid var(--border)}
+.result-history-picker label{display:block;margin-bottom:7px;color:var(--gray);font-size:.74rem;font-weight:700}
+.result-history-picker select{width:100%;padding:11px 12px;border:2px solid var(--border);border-radius:9px;background:#fff;color:var(--g1);font:inherit;font-size:.82rem}
+.result-history-picker small{display:block;margin-top:7px;color:var(--gray);font-size:.7rem;line-height:1.4}
+body.result-context-read-only #sheet-rows .sc-inp{pointer-events:none;opacity:.62;background:#f3f4f6}
+body.result-context-read-only #save-draft-btn,body.result-context-read-only #publish-btn,body.result-context-read-only #scan-record-btn{opacity:.5;pointer-events:none}
+.result-read-only-note{display:none;margin:0 0 13px;padding:10px 12px;border-left:3px solid var(--gold);border-radius:8px;background:#fff8e9;color:#725d37;font-size:.75rem;line-height:1.45}
+body.result-context-read-only .result-read-only-note{display:block}
 </style>
 </head>
 <body>
@@ -602,6 +617,7 @@ body.central-management-mode .central-management-only{display:flex}
         <span id="class-chip-name"></span>
       </div>
       <span id="context-chip" style="display:none;align-items:center;background:var(--mint);color:var(--g1);font-size:.68rem;font-weight:700;padding:4px 9px;border-radius:12px;white-space:nowrap"></span>
+      <span id="official-context-label" class="official-context-label">Official context loading…</span>
     </div>
     <div class="tb-right">
             <span class="saved-msg" id="saved-msg">Saved</span>
@@ -684,7 +700,7 @@ body.central-management-mode .central-management-only{display:flex}
     <div id="scores-sheet-view" style="display:none">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="closeSheet()">&#8592; Back</button>
-        <button class="btn btn-gold btn-sm" onclick="openOCRScanner()">&#128247; Scan Record Book</button>
+        <button class="btn btn-gold btn-sm" id="scan-record-btn" onclick="openOCRScanner()">&#128247; Scan Record Book</button>
         <h3 id="sheet-title" style="font-family:'Playfair Display',serif;color:var(--g1);font-size:1.1rem;flex:1;margin:0"></h3>
         <span id="sheet-pub-badge" style="display:none;background:#10b981;color:#fff;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px">Published</span>
       </div>
@@ -701,8 +717,9 @@ body.central-management-mode .central-management-only{display:flex}
         </div>
         <div id="sheet-rows"></div>
       </div>
+      <p class="result-read-only-note">This is a previous or closed academic context. You can view it, but edits and publication are disabled.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-outline" onclick="saveDraft()">Save Draft</button>
+        <button class="btn btn-outline" id="save-draft-btn" onclick="saveDraft()">Save Draft</button>
         <button class="btn btn-primary" id="publish-btn" onclick="togglePublish()">Publish Subject</button>
       </div>
     </div>
@@ -867,7 +884,7 @@ body.central-management-mode .central-management-only{display:flex}
           <div class="fg"><label>Phone</label><input class="inp" id="cfg-phone"/></div>
           <div class="fg"><label>Email</label><input class="inp" id="cfg-email"/></div>
           <div class="fg-row">
-            <div class="fg"><label>Session</label><input class="inp" id="cfg-session"/></div>
+            <div class="fg"><label>Official session · Central Registry</label><input class="inp" id="cfg-session" readonly aria-readonly="true"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">The current session and term are managed in Central Registry and appear here for reference.</small></div>
           </div>
         </div>
       </div>
@@ -1006,32 +1023,32 @@ body.central-management-mode .central-management-only{display:flex}
   </div><!-- /content -->
 </div><!-- /main -->
 
-<!-- TERM SELECTION MODAL -->
+<!-- ACADEMIC CONTEXT MODAL -->
 <div class="overlay" id="modal-term" style="display:flex;display:none">
   <div class="modal" style="max-width:380px">
     <div class="modal-hdr">
-      <h3 id="modal-term-title">Select Term</h3>
+      <h3 id="modal-term-title">Choose academic context</h3>
       <button class="modal-x" onclick="closeModal('modal-term')">&#215;</button>
     </div>
     <div class="modal-body" style="padding:24px 20px">
       <p style="font-size:.88rem;color:var(--gray);margin-bottom:20px;text-align:center">
-        Choose the term you want to work on for <strong id="modal-term-class"></strong>
+        Central Registry controls the official context for <strong id="modal-term-class"></strong>. Use the current term for work, or open a saved context as read-only history.
       </p>
-      <div class="form-grp" style="margin-bottom:16px">
-        <label>Academic session</label>
-        <input class="inp" id="modal-term-session" value="2025/2026" autocomplete="off" inputmode="text"/>
-        <small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">This selected session and term stay active across Result pages.</small>
+      <div class="result-context-current">
+        <span>Official current context</span>
+        <strong id="modal-official-context">Loading…</strong>
+        <small id="modal-official-status">Managed in Central Registry.</small>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <button class="btn btn-primary" style="padding:14px;font-size:1rem;justify-content:center" onclick="confirmTerm('1st Term')">
-          1st Term
-        </button>
-        <button class="btn btn-outline" style="padding:14px;font-size:1rem;justify-content:center" onclick="confirmTerm('2nd Term')">
-          2nd Term
-        </button>
-        <button class="btn btn-outline" style="padding:14px;font-size:1rem;justify-content:center" onclick="confirmTerm('3rd Term')">
-          3rd Term
-        </button>
+      <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:14px;font-size:1rem;justify-content:center" onclick="confirmCurrentContext()">
+        Continue with current term
+      </button>
+      <div class="result-history-picker">
+        <label for="modal-history-context">Previous term or session</label>
+        <select id="modal-history-context">
+          <option value="">Select saved history</option>
+        </select>
+        <small>History is never overwritten. Any selected previous context opens read-only.</small>
+        <button class="btn btn-outline" id="open-history-btn" style="width:100%;margin-top:10px;justify-content:center" onclick="confirmHistoricalContext()">Open read-only history</button>
       </div>
     </div>
   </div>
@@ -1281,6 +1298,13 @@ var CURRENT_USER=null;
 var CURRENT_AUTH_MODE=null;
 var CURRENT_PERMISSIONS=[];
 var CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+var CONTEXT_READ_ONLY=false;
+window._academicContext=null;
+window._academicHistory=[];
+window._activeTermStatus='open';
+var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees.update','results.publish','results.unpublish','students.upsert','students.archive','settings.app_config.update'];
+
+function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(String(action||'').toLowerCase())>-1;}
 
 function resultAuthRequest(method,body){
   var opts={method:method,credentials:'same-origin',headers:{'Accept':'application/json'}};
@@ -1296,6 +1320,7 @@ function resultAuthRequest(method,body){
 }
 
 function resultDataRequest(action,payload){
+  if(CONTEXT_READ_ONLY&&isResultMutationAction(action))return Promise.reject({code:'RESULT_ACADEMIC_CONTEXT_READ_ONLY'});
   return fetch('/api/result-data',{
     method:'POST',credentials:'same-origin',
     headers:{'Accept':'application/json','Content-Type':'application/json'},
@@ -1403,6 +1428,7 @@ function restorePortalPageAfterLogin(){
     TERM=_trm;
     SELECTED_SESSION=selectedSession;
     CONTEXT_EXPLICIT=true;
+    CONTEXT_READ_ONLY=!isOfficialOpenContext(selectedSession,TERM);
     setResultContext(CLS,selectedSession,TERM).then(function(){
       persistSelectedContext();
       setMode(true);
@@ -1422,6 +1448,7 @@ function restorePortalPageAfterLogin(){
   }else{
     CONTEXT_EXPLICIT=false;
     SELECTED_SESSION=null;
+    CONTEXT_READ_ONLY=false;
     setMode(false);
     renderHome();
   }
@@ -1717,10 +1744,33 @@ function getActiveSession(){
   var cfg=getCfg();
   return cfg.session||DEFAULT_SESSION;
 }
+function officialAcademicContext(){
+  var ctx=window._academicContext||{};
+  var cfg=getCfg();
+  return {
+    session:String(ctx.academic_session||ctx.session||window._activeServerSession||cfg.session||DEFAULT_SESSION).trim(),
+    term:String(ctx.term||window._activeServerTerm||cfg.term||DEFAULT_TERM).trim(),
+    status:String(ctx.term_status||window._activeTermStatus||'open').trim()||'open'
+  };
+}
+function isOfficialOpenContext(session,term){
+  var official=officialAcademicContext();
+  return String(session||'').trim()===official.session&&String(term||'').trim()===official.term&&official.status==='open';
+}
+function updateContextLock(){
+  CONTEXT_READ_ONLY=Boolean(CONTEXT_EXPLICIT&&!isOfficialOpenContext(getActiveSession(),TERM));
+  document.body.classList.toggle('result-context-read-only',CONTEXT_READ_ONLY);
+  var label=document.getElementById('official-context-label');
+  var official=officialAcademicContext();
+  if(label)label.textContent='Official · '+official.session+' · '+official.term;
+}
 function resultContextMessage(error){
   var code=error&&error.code;
-  if(code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_CONTEXT_INVALID'||code==='RESULT_TERM_INVALID'||code==='RESULT_ACADEMIC_CONTEXT_REQUIRED'){
-    return 'The selected class, academic session or term is no longer valid. Select the context again.';
+  if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY'){
+    return 'This academic history is read-only. Return to the official current term to make changes.';
+  }
+  if(code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_CONTEXT_INVALID'||code==='RESULT_TERM_INVALID'||code==='RESULT_ACADEMIC_CONTEXT_REQUIRED'||code==='RESULT_ACADEMIC_CONTEXT_NOT_FOUND'){
+    return 'That academic context is not available for this account.';
   }
   if(code==='RESULT_CLASS_SCOPE_DENIED'||code==='RESULT_SUBJECT_SCOPE_DENIED'||code==='RESULT_CLASS_SCOPE_REQUIRED'){
     return 'This class or subject is not assigned to the current Results account.';
@@ -1736,9 +1786,10 @@ function syncContextDisplay(){
   if(cardSession)cardSession.value=session;
   if(cardTerm)cardTerm.value=TERM;
   if(cardTermLabel)cardTermLabel.textContent=TERM;
+  updateContextLock();
   if(chip&&IN_CLASS&&DEPTS[CLS]){
     chip.style.display='inline-flex';
-    chip.textContent=(DEPTS[CLS].label||CLS)+' · '+session+' · '+TERM;
+    chip.textContent=(DEPTS[CLS].label||CLS)+' · '+session+' · '+TERM+(CONTEXT_READ_ONLY?' · Read only':'');
   }else if(chip){
     chip.style.display='none';
     chip.textContent='';
@@ -1809,10 +1860,12 @@ function loadRemoteSettings(options){
   if(REMOTE_SETTINGS_PROMISE)return REMOTE_SETTINGS_PROMISE;
   var previousSession=getActiveSession();
   var settingsRequest=isCentralAuth()
-    ? resultDataRequest('settings.read',{}).then(function(payload){
+      ? resultDataRequest('settings.read',{}).then(function(payload){
         var result=payload.settings||{};
         var rows=[{key:'app_config',value:JSON.stringify(result.app_config||{})}];
         Object.keys(result.safe||{}).forEach(function(key){rows.push({key:key,value:result.safe[key]});});
+        if(result.academic_context)rows.push({key:'academic_context',value:JSON.stringify(result.academic_context)});
+        if(result.academic_history)rows.push({key:'academic_history',value:JSON.stringify(result.academic_history)});
         return rows;
       })
     : Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
@@ -1820,14 +1873,21 @@ function loadRemoteSettings(options){
     .then(function(rows){
       var byKey={};
       (Array.isArray(rows)?rows:[]).forEach(function(row){byKey[row.key]=row.value;});
-      // The protected Result authorizer uses public.settings.term as the
-      // active write context. Keep the client default aligned with that
-      // server value; a user can still explicitly select a historical term
-      // for read-only work.
-      var serverTerm=String(byKey.term||'').trim();
-      window._activeServerTerm=serverTerm||DEFAULT_TERM;
-      if(serverTerm&&!CONTEXT_EXPLICIT&&!IN_CLASS&&TERM!==serverTerm){
+      var contextData={};
+      var historyData=[];
+      try{contextData=byKey.academic_context?JSON.parse(byKey.academic_context):{};}catch(e){contextData={};}
+      try{historyData=byKey.academic_history?JSON.parse(byKey.academic_history):[];}catch(e){historyData=[];}
+      window._academicContext=contextData||{};
+      window._academicHistory=Array.isArray(historyData)?historyData:[];
+      window._activeServerSession=String(contextData.academic_session||byKey.session||'').trim()||DEFAULT_SESSION;
+      window._activeServerTerm=String(contextData.term||byKey.term||'').trim()||DEFAULT_TERM;
+      window._activeTermStatus=String(contextData.term_status||byKey.term_status||'open').trim()||'open';
+      var serverSession=window._activeServerSession;
+      var serverTerm=window._activeServerTerm;
+      if(!CONTEXT_EXPLICIT&&!IN_CLASS&&(TERM!==serverTerm||getActiveSession()!==serverSession)){
         TERM=serverTerm;
+        SELECTED_SESSION=null;
+        CONTEXT_READ_ONLY=false;
         clearSessionCaches();
       }
       if(byKey.gemini_key){
@@ -1836,21 +1896,24 @@ function loadRemoteSettings(options){
         if(ki)ki.value=byKey.gemini_key;
       }
       if(byKey.app_config){
-        var remoteCfg=JSON.parse(byKey.app_config);
-        if(serverTerm)remoteCfg.term=serverTerm;
+        var remoteCfg={};
+        try{remoteCfg=JSON.parse(byKey.app_config)||{};}catch(e){remoteCfg={};}
+        remoteCfg.session=serverSession;
+        remoteCfg.term=serverTerm;
         window._remoteCfg=remoteCfg;
-         if(!CONTEXT_EXPLICIT&&previousSession!==(remoteCfg.session||DEFAULT_SESSION))clearSessionCaches();
+        if(!CONTEXT_EXPLICIT&&!IN_CLASS&&previousSession!==serverSession)clearSessionCaches();
         var labels=[
-          ['sb-session-lbl',(remoteCfg.session||DEFAULT_SESSION)+' Session'],
-          ['home-session',(remoteCfg.session||DEFAULT_SESSION)+' Session']
+          ['sb-session-lbl',serverSession+' Session'],
+          ['home-session',serverSession+' Session']
         ];
         labels.forEach(function(item){
           var el=document.getElementById(item[0]);
           if(el)el.textContent=item[1];
         });
         var rcs=document.getElementById('rc-session');
-        if(rcs)rcs.value=CONTEXT_EXPLICIT?getActiveSession():(remoteCfg.session||DEFAULT_SESSION);
+        if(rcs)rcs.value=CONTEXT_EXPLICIT?getActiveSession():serverSession;
       }
+      updateContextLock();
       return true;
     });
   REMOTE_SETTINGS_PROMISE=REMOTE_SETTINGS_PROMISE.then(function(result){
@@ -2505,6 +2568,11 @@ function mobileNav(id,el){
 
 function goHome(){
   setMode(false);
+  CONTEXT_EXPLICIT=false;
+  SELECTED_SESSION=null;
+  CONTEXT_READ_ONLY=false;
+  TERM=officialAcademicContext().term;
+  updateContextLock();
   // Reset card selector completely when going home
   var rcStu=document.getElementById('rc-stu');
   if(rcStu)rcStu.innerHTML='<option value="">Select student</option>';
@@ -2513,34 +2581,55 @@ function goHome(){
   navTo('home',document.getElementById('ni-home'));
 }
 
+function renderAcademicContextModal(){
+  var official=officialAcademicContext();
+  var label=document.getElementById('modal-official-context');
+  var status=document.getElementById('modal-official-status');
+  var select=document.getElementById('modal-history-context');
+  var openHistory=document.getElementById('open-history-btn');
+  if(label)label.textContent=official.session+' · '+official.term;
+  if(status)status.textContent=official.status==='open'?'Open for authorised work.':'Closed or archived in Central Registry — read-only.';
+  if(!select)return;
+  select.innerHTML='<option value="">Select saved history</option>';
+  var count=0;
+  (window._academicHistory||[]).forEach(function(item){
+    var session=String(item&&item.academic_session||'').trim();
+    var term=String(item&&item.term||'').trim();
+    if(!session||!term||session===official.session&&term===official.term)return;
+    var option=document.createElement('option');
+    option.value=encodeURIComponent(session)+'|'+encodeURIComponent(term);
+    option.textContent=session+' · '+term+(item.term_status&&item.term_status!=='open'?' · Read only':'');
+    select.appendChild(option);count++;
+  });
+  if(!count){
+    var empty=document.createElement('option');
+    empty.value='';empty.textContent='No previous saved context available';empty.disabled=true;
+    select.appendChild(empty);
+  }
+  if(openHistory)openHistory.disabled=!count;
+}
+
 function enterClass(key){
   if(!DEPTS[key]){showToast('Unknown class','error');return;}
   var titleEl=document.getElementById('modal-term-title');
   var clsEl=document.getElementById('modal-term-class');
-  var sessionEl=document.getElementById('modal-term-session');
-  if(titleEl)titleEl.textContent='Select Result Context';
+  if(titleEl)titleEl.textContent='Choose academic context';
   if(clsEl)clsEl.textContent=DEPTS[key].label;
-  if(sessionEl)sessionEl.value=getActiveSession();
   window._pendingClassKey=key;
+  renderAcademicContextModal();
   document.getElementById('modal-term').style.display='flex';
 }
 
-function confirmTerm(term){
-  var key=window._pendingClassKey;
-  if(!key)return;
-  var sessionEl=document.getElementById('modal-term-session');
-  var selectedSession=String(sessionEl&&sessionEl.value||getCfg().session||DEFAULT_SESSION).trim();
-  var previous={classKey:CLS,term:TERM,session:SELECTED_SESSION,explicit:CONTEXT_EXPLICIT};
-  if(!selectedSession){
-    showToast('Enter an academic session before continuing.','error');
-    return;
-  }
+function applyClassContext(key,selectedSession,selectedTerm,readOnly){
+  var previous={classKey:CLS,term:TERM,session:SELECTED_SESSION,explicit:CONTEXT_EXPLICIT,readOnly:CONTEXT_READ_ONLY};
+  if(!key||!selectedSession||!selectedTerm){showToast('Choose an available academic context first.','error');return;}
   CLS=key;
-  TERM=term;
+  TERM=selectedTerm;
   SELECTED_SESSION=selectedSession;
   CONTEXT_EXPLICIT=true;
-  showLoad('Validating selected context...');
-  setResultContext(key,selectedSession,term).then(function(){
+  CONTEXT_READ_ONLY=!!readOnly;
+  showLoad('Validating academic context...');
+  setResultContext(key,selectedSession,selectedTerm).then(function(){
     closeModal('modal-term');
     DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
     clearScoreDrafts();
@@ -2560,45 +2649,40 @@ function confirmTerm(term){
     TERM=previous.term;
     SELECTED_SESSION=previous.session;
     CONTEXT_EXPLICIT=previous.explicit;
+    CONTEXT_READ_ONLY=previous.readOnly;
     hideLoad();
     syncContextDisplay();
     showToast(resultContextMessage(error),'error');
   });
 }
 
+function confirmCurrentContext(){
+  var key=window._pendingClassKey;
+  if(!key)return;
+  var official=officialAcademicContext();
+  applyClassContext(key,official.session,official.term,!isOfficialOpenContext(official.session,official.term));
+}
+
+function confirmHistoricalContext(){
+  var key=window._pendingClassKey;
+  var select=document.getElementById('modal-history-context');
+  var raw=select&&select.value||'';
+  if(!key||!raw){showToast('Choose a saved history context first.','error');return;}
+  var parts=raw.split('|');
+  var session=decodeURIComponent(parts[0]||'');
+  var term=decodeURIComponent(parts[1]||'');
+  applyClassContext(key,session,term,true);
+}
+
+/* Backward-compatible entry point for older cached markup; it never accepts an arbitrary term. */
+function confirmTerm(){confirmCurrentContext();}
+
 function changeTerm(newTerm){
   if(!IN_CLASS||!CLS||!newTerm||newTerm===TERM)return;
-  var previousTerm=TERM;
   var selectedSession=getActiveSession();
-  showLoad('Validating '+newTerm+'...');
-  setResultContext(CLS,selectedSession,newTerm).then(function(){
-    TERM=newTerm;
-    SELECTED_SESSION=selectedSession;
-    CONTEXT_EXPLICIT=true;
-    DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
-    clearScoreDrafts();
-    Object.keys(PUB_CACHE).forEach(function(k){
-      if(k.indexOf(CLS+'|')===0)delete PUB_CACHE[k];
-    });
-    persistSelectedContext();
-    syncContextDisplay();
-    showToast('Switched to '+newTerm);
-    return loadClass(CLS);
-  }).then(function(){
-    var activePages=['dashboard','students','scores','broadsheet','card','progress','analytics'];
-    for(var i=0;i<activePages.length;i++){
-      var pg=document.getElementById('page-'+activePages[i]);
-      if(pg&&pg.classList.contains('active')){
-        navTo(activePages[i],null);
-        break;
-      }
-    }
-  }).catch(function(error){
-    TERM=previousTerm;
-    syncContextDisplay();
-    hideLoad();
-    showToast(resultContextMessage(error),'error');
-  });
+  var record=(window._academicHistory||[]).find(function(item){return String(item.academic_session||'')===selectedSession&&String(item.term||'')===String(newTerm);});
+  if(!record){showToast('Choose a saved context from the class history picker.','error');return;}
+  applyClassContext(CLS,selectedSession,String(newTerm),true);
 }
 
 // ============================================================
@@ -2917,6 +3001,7 @@ function confirmedScoreResponse(studentId,subjectIdx,response,version){
 }
 function scoreSaveMessage(error){
   var code=error&&error.code;
+  if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY')return 'Save failed — this previous or closed academic context is read-only.';
   if(code==='RESULT_TERM_NOT_ACTIVE'||code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_TERM_INVALID')return 'Save failed — not recorded: select the selected class, session and term again.';
   if(code==='RESULT_ACADEMIC_SESSION_NOT_ACTIVE'||code==='RESULT_CONTEXT_INVALID')return 'Save failed — not recorded: select the selected academic session again.';
   if(code==='RESULT_CLASS_SCOPE_DENIED'||code==='RESULT_SUBJECT_SCOPE_DENIED')return 'Save failed — not recorded: this class or subject is not assigned.';
@@ -4269,14 +4354,16 @@ function addSubject(){
 }
 function saveSettings(){
   var cfg=getCfg();
-  var previousSession=cfg.session||DEFAULT_SESSION;
+  var official=officialAcademicContext();
+  var previousSession=official.session;
   cfg.school={
     name:document.getElementById('cfg-name').value.trim()||DEFAULT_SCHOOL.name,
     addr:document.getElementById('cfg-addr').value.trim()||DEFAULT_SCHOOL.addr,
     phone:document.getElementById('cfg-phone').value.trim()||DEFAULT_SCHOOL.phone,
     email:document.getElementById('cfg-email').value.trim()||DEFAULT_SCHOOL.email
   };
-  cfg.session=document.getElementById('cfg-session').value.trim()||DEFAULT_SESSION;
+  cfg.session=official.session;
+  cfg.term=official.term;
   if(!cfg.signature)cfg.signature={};
   cfg.signature.name=document.getElementById('cfg-sig-name').value.trim();
   cfg.signature.title=document.getElementById('cfg-sig-title').value.trim()||'Proprietor';
