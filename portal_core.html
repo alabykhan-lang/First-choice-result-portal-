@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>WTS Result Management System</title>
+<title>Way to Success Standard Schools · Results</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -301,6 +301,12 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .promotion-preview.show{display:block}
 .promotion-preview-head{background:#f0fdf4;color:var(--g1);font-size:.8rem;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border)}
 .promotion-preview-body{max-height:260px;overflow:auto}
+.archive-context-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:15px;border:1px solid var(--border);border-radius:12px;background:#fbfffd;color:var(--g1);text-align:left;cursor:pointer;transition:.18s;box-shadow:var(--shadow)}
+.archive-context-card:hover{border-color:var(--g3);background:#f0fdf4;transform:translateY(-1px)}
+.archive-context-card strong{font-size:1rem}
+.archive-context-card span:not(.badge){font-size:.82rem;font-weight:700;color:var(--gray)}
+.archive-context-card small{font-size:.7rem;color:var(--gray);line-height:1.35}
+.archive-graduate-card{border-color:#f2cf82;background:#fffaf0}
 
 /* ── ANALYTICS ── */
 .perf-bar-wrap{background:#f3f4f6;border-radius:20px;height:8px;overflow:hidden}
@@ -467,8 +473,8 @@ body.result-context-read-only .result-read-only-note{display:block}
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-header">
-      <img id="auth-logo" src="" alt="WTS"/>
-      <h2>Way To Success Standard Schools</h2>
+      <img id="auth-logo" src="" alt="Way to Success Standard Schools"/>
+      <h2>Way to Success Standard Schools</h2>
       <p>Result Management System</p>
     </div>
     <div class="auth-body">
@@ -480,14 +486,14 @@ body.result-context-read-only .result-read-only-note{display:block}
         </p>
       </div>
     </div>
-    <div class="auth-footer">Way To Success Standard Schools &copy; 2026</div>
+    <div class="auth-footer">Way to Success Standard Schools &copy; 2026</div>
   </div>
 </div>
 
 <div id="sidebar">
   <div class="sb-logo" style="display:flex;align-items:center;gap:10px">
     <img id="sb-logo" src="" style="width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;padding:3px;flex-shrink:0"/>
-    <div><h1 style="font-size:.78rem;line-height:1.3">Result Management</h1><p style="font-size:.62rem;margin-top:2px;opacity:.8">Way To Success</p></div>
+    <div><h1 style="font-size:.78rem;line-height:1.3">Results</h1><p style="font-size:.62rem;margin-top:2px;opacity:.8">Way to Success Standard Schools</p></div>
   </div>
   <div class="sb-class-lbl" id="sb-class-lbl">
     <span>Current Class</span>
@@ -500,6 +506,10 @@ body.result-context-read-only .result-read-only-note{display:block}
       Home
     </div>
 
+    <div class="ni" id="ni-history" onclick="navTo('history',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>
+      Archive &amp; History
+    </div>
     <div class="ni central-management-only" onclick="window.open('https://wts-central-registry.vercel.app/','_blank','noopener')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Central Registry Access Management
@@ -547,7 +557,7 @@ body.result-context-read-only .result-read-only-note{display:block}
   </nav>
   <div class="sb-foot">
     <p>Ifedapo Community, Oko/Ijado Rd<br>Ejigbo, Osun State</p>
-    <span class="sb-session" id="sb-session-lbl">2025/2026 Session</span>
+    <span class="sb-session" id="sb-session-lbl">2026/2027 Session</span>
   </div>
   <!-- User info + Logout -->
   <div id="sb-user-panel" style="position:absolute;bottom:0;left:0;right:0;background:var(--g1);padding:12px 16px;border-top:1px solid rgba(125,212,176,.3)">
@@ -571,6 +581,9 @@ body.result-context-read-only .result-read-only-note{display:block}
   <div class="bn-strip" id="bn-home-strip">
     <div class="bn-item active" onclick="mobileNav('home',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
+    </div>
+    <div class="bn-item" onclick="mobileNav('history',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>History
     </div>
     <div class="bn-item results-management-only-bn" onclick="mobileNav('settings',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
@@ -610,7 +623,7 @@ body.result-context-read-only .result-read-only-note{display:block}
       </button>
       <div>
         <div class="tb-title" id="tb-title">Home</div>
-        <div class="tb-sub" id="tb-sub">Way To Success Standard Schools</div>
+        <div class="tb-sub" id="tb-sub">Way to Success Standard Schools</div>
       </div>
       <div class="class-chip" id="class-chip" onclick="goHome()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -633,9 +646,9 @@ body.result-context-read-only .result-read-only-note{display:block}
     <div style="max-width:720px;margin:0 auto">
       <div style="background:var(--g1);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px;box-shadow:var(--shadow2)">
         <img id="home-logo" src="" style="width:110px;height:110px;object-fit:contain;margin:0 auto 10px;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))"/>
-        <h1 style="font-family:'Playfair Display',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">Way To Success Standard Schools</h1>
+        <h1 style="font-family:'Playfair Display',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">Way to Success Standard Schools</h1>
         <p style="color:rgba(255,255,255,.6);font-size:.8rem">Ifedapo Community, Oko/Ijado Road, Ejigbo, Osun State</p>
-        <div id="home-session" style="display:inline-block;background:var(--gold);color:var(--g1);font-size:.72rem;font-weight:700;padding:3px 14px;border-radius:20px;margin-top:10px">2025/2026 Session</div>
+        <div id="home-session" style="display:inline-block;background:var(--gold);color:var(--g1);font-size:.72rem;font-weight:700;padding:3px 14px;border-radius:20px;margin-top:10px">2026/2027 Session</div>
       </div>
       <p style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--g1);text-align:center;margin-bottom:20px;font-weight:700">Select a Class to Continue</p>
       <div class="home-level">
@@ -653,6 +666,29 @@ body.result-context-read-only .result-read-only-note{display:block}
       <div class="home-level">
         <div class="home-level-title">Senior Secondary</div>
         <div class="home-grid" id="hg-ss"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHIVE & HISTORY -->
+  <div class="page" id="page-history">
+    <div style="max-width:1050px;margin:0 auto">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+        <div><p class="sec-title" style="margin:0 0 5px;border:0">READ-ONLY SCHOOL ARCHIVE</p><h2 style="font-family:'Playfair Display',serif;color:var(--g1);font-size:1.45rem">Past sessions and graduating students</h2><p style="font-size:.8rem;color:var(--gray);margin-top:6px;max-width:650px">Previous terms, sections and graduating records are preserved here for reading. The archive never writes to scores, students or promotion decisions.</p></div>
+        <button class="btn btn-outline btn-sm" type="button" onclick="loadHistoryDashboard()">&#8635; Refresh archive</button>
+      </div>
+      <div class="result-read-only-note" style="display:block">Archive mode: all records on this page are read-only. The official current session and term remain managed by Central Registry.</div>
+      <div class="tbl-wrap" style="margin-bottom:18px">
+        <div class="tbl-head"><h3>Past sessions and terms</h3><span style="font-size:.72rem;color:var(--gray)" id="history-context-count">Loading…</span></div>
+        <div id="history-contexts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;padding:16px"><div class="empty"><h3>Loading archive</h3><p>Reading saved academic history…</p></div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:18px">
+        <div class="tbl-head"><h3 id="history-section-title">Select a past session</h3><span style="font-size:.72rem;color:var(--gray)" id="history-section-meta">No section selected</span></div>
+        <div id="history-sections" style="display:flex;gap:8px;flex-wrap:wrap;padding:16px"><div class="empty">Choose a past session above to view its sections.</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h3 id="history-student-title">Archive records</h3><span style="font-size:.72rem;color:var(--gray)" id="history-student-meta">Read-only</span></div>
+        <div id="history-students" style="overflow-x:auto"><div class="empty" style="padding:25px">Choose a section or graduating students to view the preserved roster.</div></div>
       </div>
     </div>
   </div>
@@ -783,7 +819,7 @@ body.result-context-read-only .result-read-only-note{display:block}
       </div>
       <div class="form-grp">
         <label>Session</label>
-        <input class="inp" id="rc-session" value="2025/2026" readonly aria-readonly="true" style="width:110px"/>
+        <input class="inp" id="rc-session" value="2026/2027" readonly aria-readonly="true" style="width:110px"/>
       </div>
       <button class="btn btn-gold btn-sm" onclick="refreshCard()">&#8635; Refresh Data</button>
       <button class="btn btn-primary btn-sm" onclick="printCard()">Print Card</button>
@@ -914,33 +950,23 @@ body.result-context-read-only .result-read-only-note{display:block}
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
-        <div class="tbl-head"><h3>Secondary Session Carry Forward</h3></div>
+        <div class="tbl-head"><h3>Promotion thresholds</h3></div>
         <div style="padding:16px">
           <div class="promotion-note">
-            Carry forward runs for all classes into the new session. Early childhood and primary classes move automatically with no repetition; secondary classes use the repeat and probation rules below.
-          </div>
-          <div class="fg-row">
-            <div class="fg"><label>Carry From Session</label><input class="inp" id="promo-source-session" placeholder="2025/2026"/></div>
-            <div class="fg"><label>Carry To New Session</label><input class="inp" id="promo-target-session" placeholder="2026/2027"/></div>
+            Central Registry is the only service that carries students into a new session. Results stores the three configured secondary thresholds below; students who meet their class minimum average are promoted, while students below it are detained/retained. Early years, primary classes and the remaining secondary transitions follow the approved class progression map.
           </div>
           <div style="overflow-x:auto">
-            <table class="data-table promotion-table" style="font-size:.78rem;min-width:820px">
+            <table class="data-table promotion-table" style="font-size:.78rem;min-width:560px">
               <thead>
                 <tr>
-                  <th>Secondary Class</th><th>Carry To</th><th>Repeat</th><th>Repeat %</th><th>Probation</th><th>Probation %</th>
+                  <th>Class</th><th>Next class</th><th>Minimum average to promote</th><th>Below minimum</th>
                 </tr>
               </thead>
               <tbody id="promotion-cfg-tbody"></tbody>
             </table>
           </div>
           <div class="promotion-actions">
-            <button class="btn btn-outline btn-sm" onclick="previewCarryForward()">Preview Carry Forward</button>
-            <button class="btn btn-primary btn-sm" onclick="applyCarryForward()">Apply Carry Forward</button>
-            <span style="font-size:.72rem;color:var(--gray)">Uses 3rd Term averages for the current session.</span>
-          </div>
-          <div class="promotion-preview" id="promotion-preview">
-            <div class="promotion-preview-head" id="promotion-preview-head">Carry Forward Preview</div>
-            <div class="promotion-preview-body" id="promotion-preview-body"></div>
+            <span style="font-size:.72rem;color:var(--gray)">Uses the completed 3rd Term. Open Central Registry to review or run the next-session transition.</span>
           </div>
         </div>
       </div>
@@ -1276,6 +1302,7 @@ window.addEventListener('popstate',function(e){
       if(niEl)niEl.classList.add('active');
       // Render the page
       if(prev==='home'){setMode(false);renderHome();}
+      if(prev==='history'){setMode(false);loadHistoryDashboard();}
       if(prev==='dashboard')renderDash();
       if(prev==='students')renderStudents();
       if(prev==='scores')renderScoreGrid();
@@ -1686,7 +1713,8 @@ function centralResultRead(path){
   if(!payload.class_key&&CLS)payload.class_key=dbClassKey(CLS);
   if(!payload.academic_session)payload.academic_session=getActiveSession();
   if(!payload.term&&['scores','traits','remarks','fees','published_subjects'].indexOf(resource)>-1)payload.term=TERM;
-  return resultDataRequest('read.'+resource,payload).then(function(result){
+  var readAction=(CONTEXT_READ_ONLY&&resource==='students')?'history.students':'read.'+resource;
+  return resultDataRequest(readAction,payload).then(function(result){
     return Array.isArray(result.rows)?result.rows:[];
   }).catch(function(error){
     if(error&&['RESULT_CLASS_SCOPE_REQUIRED','RESULT_CLASS_SCOPE_DENIED','RESULT_SUBJECT_SCOPE_REQUIRED','RESULT_SUBJECT_SCOPE_DENIED'].indexOf(error.code)>-1){
@@ -1736,7 +1764,7 @@ var DEFAULT_REMARKS=[
   {min:70,max:79,text:'Very good performance. Keep it up!'},
   {min:80,max:100,text:'Excellent performance. Keep up the outstanding work!'}
 ];
-var DEFAULT_SESSION='2025/2026';
+var DEFAULT_SESSION='2026/2027';
 var DEFAULT_TERM='1st Term';
 
 function getActiveSession(){
@@ -1815,8 +1843,10 @@ function setResultContext(classKey,session,term){
   });
 }
 function dbClassKey(classKey,session){
-  var s=session||getActiveSession();
-  return s===DEFAULT_SESSION?classKey:s+'::'+classKey;
+  // Class keys are shared with Central Registry and staff access scopes.
+  // Academic session is already carried by the protected API payload, so a
+  // second session prefix would make the next-session scopes unreadable.
+  return String(classKey||'').trim();
 }
 function nextAcademicSession(session){
   var m=String(session||'').match(/^(\d{4})\s*\/\s*(\d{4})$/);
@@ -1942,6 +1972,7 @@ function renderCurrentPageAfterSync(){
   if(id==='progress')renderProgress();
   if(id==='analytics')renderAnalytics();
   if(id==='settings')renderSettings();
+  if(id==='history')renderHistoryContexts();
   if(id==='card'){
     var selector=document.getElementById('rc-stu');
     var sid=selector?selector.value:'';
@@ -2075,6 +2106,7 @@ var DEPTS={
 };
 var ALL_CLASSES=['creche','kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-general','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts'];
 var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-general','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts'];
+var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-general'];
 var DEFAULT_PROMOTION_TARGETS={
   creche:'kg1',kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
   primary1:'primary2',primary2:'primary3',primary3:'primary4',primary4:'primary5',primary5:'jss1',
@@ -2089,7 +2121,7 @@ function escapeHtml(v){
   });
 }
 function defaultPromotionRule(classKey){
-  return {target:DEFAULT_PROMOTION_TARGETS[classKey]||'',repeatOn:false,repeatPct:40,probationOn:false,probationPct:50};
+  return {target:DEFAULT_PROMOTION_TARGETS[classKey]||'',repeatOn:false,repeatPct:40,minimumPct:40,probationOn:false,probationPct:50};
 }
 function isSecondaryClass(classKey){
   return SECONDARY_CLASSES.indexOf(classKey)>-1;
@@ -2101,6 +2133,7 @@ function getPromotionCfg(){
   ALL_CLASSES.forEach(function(key){
     out[key]=Object.assign(defaultPromotionRule(key),pc[key]||{});
     out[key].repeatPct=Number(out[key].repeatPct||0);
+    out[key].minimumPct=Number(out[key].minimumPct||out[key].repeatPct||0);
     out[key].probationPct=Number(out[key].probationPct||0);
   });
   return out;
@@ -2133,17 +2166,13 @@ function calcPromotionAverage(studentId,classKey,scores,published){
 function classifyPromotion(avg,rule){
   if(!isSecondaryClass(rule.classKey))return{action:rule.target?'promote':'hold',label:rule.target?'Automatic carry forward':'Final class'};
   if(avg==='')return{action:'hold',label:'No result data'};
-  if(rule.repeatOn&&avg<Number(rule.repeatPct||0))return{action:'repeat',label:'Repeat'};
-  if(rule.probationOn&&avg<Number(rule.probationPct||0))return{action:'probation',label:'Carry forward on probation'};
+  if(PROMOTION_THRESHOLD_CLASSES.indexOf(rule.classKey)>-1&&avg<Number(rule.minimumPct||rule.repeatPct||0))return{action:'repeat',label:'Detained / retained'};
   return{action:'promote',label:'Carry forward'};
 }
 function getPromotionSessionsFromForm(){
-  var cfg=getCfg();
-  var source=document.getElementById('promo-source-session');
-  var target=document.getElementById('promo-target-session');
-  var src=source?source.value.trim():(cfg.promotionSourceSession||cfg.session||DEFAULT_SESSION);
-  var tgt=target?target.value.trim():(cfg.promotionTargetSession||nextAcademicSession(src)||cfg.session||DEFAULT_SESSION);
-  return {source:src||DEFAULT_SESSION,target:tgt||nextAcademicSession(src)||src||DEFAULT_SESSION};
+  var official=officialAcademicContext();
+  var target=official.session||DEFAULT_SESSION;
+  return {source:'previous completed session',target:target};
 }
 function loadPromotionClassPlan(classKey,sourceSession,targetSession){
   var rule=getPromotionRule(classKey);
@@ -2199,49 +2228,10 @@ function renderPromotionPlan(plans,sessions){
   if(wrap)wrap.classList.add('show');
 }
 function previewCarryForward(){
-  var form=document.getElementById('promotion-cfg-tbody');
-  if(form){var cfg=getCfg();cfg.promotionCfg=readPromotionCfgFromForm();window._remoteCfg=cfg;}
-  var sessions=getPromotionSessionsFromForm();
-  showLoad('Preparing carry forward preview...');
-  buildCarryForwardPlan(sessions.source,sessions.target).then(function(plans){
-    hideLoad();renderPromotionPlan(plans,sessions);
-  }).catch(function(e){
-    console.error(e);hideLoad();showToast('Carry forward preview failed','error');
-  });
+  showToast('Promotion is previewed and applied from Central Registry. Results remains read-only for carry forward.','error');
 }
 function applyCarryForward(skipConfirm){
-  var form=document.getElementById('promotion-cfg-tbody');
-  if(form){var cfg=getCfg();cfg.promotionCfg=readPromotionCfgFromForm();saveCfg(cfg);}
-  var sessions=getPromotionSessionsFromForm();
-  if(!skipConfirm&&!confirm('Apply carry forward from '+sessions.source+' to '+sessions.target+' using 3rd Term averages?'))return;
-  showLoad('Applying carry forward...');
-  buildCarryForwardPlan(sessions.source,sessions.target).then(function(plans){
-    renderPromotionPlan(plans,sessions);
-    var moves=[];
-    plans.forEach(function(plan){
-      plan.students.forEach(function(item){
-        var moveTarget=item.status.action==='repeat'?plan.classKey:item.target;
-        if((item.status.action==='promote'||item.status.action==='probation'||item.status.action==='repeat')&&moveTarget){
-          moves.push({id:item.student.id,from:plan.classKey,to:moveTarget,student:item.student});
-        }
-      });
-    });
-    return Promise.all(moves.map(function(m){
-      var nextStudent=Object.assign({},m.student,{class_key:dbClassKey(m.to,sessions.target)});
-      delete nextStudent.id;delete nextStudent.created_at;delete nextStudent.updated_at;
-      return dbUpsert('students',nextStudent).then(function(res){
-        var ns=Array.isArray(res)?res[0]:res;
-        DB_STUDENTS[m.from]=(DB_STUDENTS[m.from]||[]).filter(function(s){return s.id!==m.id;});
-        if(!DB_STUDENTS[m.to])DB_STUDENTS[m.to]=[];
-        if(ns)DB_STUDENTS[m.to].push(Object.assign({},ns,{class_key:m.to}));
-      });
-    })).then(function(){return moves.length;});
-  }).then(function(count){
-    hideLoad();showToast(count+' student'+(count===1?'':'s')+' carried forward');
-    renderHome();renderSettings();
-  }).catch(function(e){
-    console.error(e);hideLoad();showToast('Carry forward failed','error');
-  });
+  showToast('Only Central Registry can carry students into a new session.','error');
 }
 var AFF6=['Punctuality','Respect','Attentiveness','Reliability','Neatness','Spirit of Teamwork'];
 var PSY6=['Handwriting','Reading','Verbal Fluency/Diction','Musical Skills','Creative Arts','Physical Education'];
@@ -2528,18 +2518,20 @@ function navTo(id,el){
   if(id==='card'||id==='broadsheet'||id==='progress')pg.classList.add('print-active');
   if(el)el.classList.add('active');
   var titles={
-    home:'Home', dashboard:'Dashboard', students:'Student Roster',
+    home:'Home', history:'Archive & History', dashboard:'Dashboard', students:'Student Roster',
     scores:'Score Entry', broadsheet:'Class Broadsheet', progress:'Class Progress',
     card:'Result Cards', analytics:'Analytics', settings:'Settings', admin:'Central Registry Access Management'
   };
   document.getElementById('tb-title').textContent=titles[id]||id;
-  var sub=id==='home'?'Way To Success Standard Schools':
+  var sub=id==='home'?'Way to Success Standard Schools':
+          id==='history'?'Way to Success Standard Schools · Read-only archive':
           id==='settings'?'System Configuration':
           DEPTS[CLS]?DEPTS[CLS].label+' - '+titles[id]:'';
   if(IN_CLASS&&DEPTS[CLS]&&id!=='home')sub=DEPTS[CLS].label+' - '+titles[id]+' · '+TERM+' · '+getActiveSession();
   document.getElementById('tb-sub').textContent=sub;
   syncContextDisplay();
   if(id==='home'){setMode(false);renderHome();}
+  if(id==='history'){setMode(false);loadHistoryDashboard();}
   if(id==='dashboard')renderDash();
   if(id==='students')renderStudents();
   if(id==='scores')renderScoreGrid();
@@ -2721,6 +2713,129 @@ function renderHome(){
       }
     });
   });
+}
+
+// ============================================================
+// READ-ONLY ARCHIVE & GRADUATING STUDENTS
+// ============================================================
+var HISTORY_DATA={contexts:[],transitions:[]};
+var HISTORY_SELECTION=null;
+
+function historyRequest(action,payload){
+  return resultDataRequest('history.'+action,payload||{});
+}
+function historyContextLabel(item){
+  return String(item&&item.academic_session||'')+' · '+String(item&&item.term||'')
+    +(item&&item.term_status&&item.term_status!=='open'?' · Read only':'');
+}
+function historyRowsForContext(session,classKey,graduates){
+  return historyRequest(graduates?'graduates':'students',{
+    academic_session:session,
+    class_key:graduates?'':classKey
+  });
+}
+function loadHistoryDashboard(){
+  var contextEl=document.getElementById('history-contexts');
+  if(contextEl)contextEl.innerHTML='<div class="empty"><h3>Loading archive</h3><p>Reading saved academic history…</p></div>';
+  return historyRequest('read',{}).then(function(payload){
+    HISTORY_DATA=payload||{contexts:[],transitions:[]};
+    renderHistoryContexts();
+    var section=document.getElementById('history-sections');
+    var students=document.getElementById('history-students');
+    if(section)section.innerHTML='<div class="empty">Choose a past session above to view its sections.</div>';
+    if(students)students.innerHTML='<div class="empty" style="padding:25px">Choose a section or graduating students to view the preserved roster.</div>';
+  }).catch(function(error){
+    if(contextEl)contextEl.innerHTML='<div class="empty"><h3>Archive unavailable</h3><p>'+escapeHtml(resultContextMessage(error))+'</p></div>';
+    showToast('The read-only archive could not be loaded.','error');
+  });
+}
+function renderHistoryContexts(){
+  var el=document.getElementById('history-contexts');
+  var count=document.getElementById('history-context-count');
+  if(!el)return;
+  var contexts=Array.isArray(HISTORY_DATA.contexts)?HISTORY_DATA.contexts:[];
+  if(count)count.textContent=contexts.length+' saved context'+(contexts.length===1?'':'s');
+  var html=contexts.map(function(item,index){
+    var session=String(item.academic_session||'');
+    var term=String(item.term||'');
+    return '<button type="button" class="archive-context-card" data-history-index="'+index+'">'
+      +'<span class="badge badge-blue">Read only</span>'
+      +'<strong>'+escapeHtml(session)+'</strong>'
+      +'<span>'+escapeHtml(term)+'</span>'
+      +'<small>'+Number(item.enrolled_students||0)+' preserved students'+(Number(item.graduating_students||0)?' · '+Number(item.graduating_students||0)+' graduating':'')+'</small>'
+      +'</button>';
+  }).join('');
+  var graduateContext=contexts.find(function(item){return Number(item.graduating_students||0)>0;})
+    ||(HISTORY_DATA.transitions||[])[0];
+  if(graduateContext){
+    html+='<button type="button" class="archive-context-card archive-graduate-card" data-history-graduates="'+encodeURIComponent(String(graduateContext.source_session||graduateContext.academic_session||''))+'">'
+      +'<span class="badge badge-gold">Graduating archive</span>'
+      +'<strong>Past graduating students</strong>'
+      +'<span>'+escapeHtml(String(graduateContext.source_session||graduateContext.academic_session||''))+'</span>'
+      +'<small>Read-only alumni record</small>'
+      +'</button>';
+  }
+  el.innerHTML=html||'<div class="empty"><h3>No saved history yet</h3><p>Closed sessions will appear here after Central Registry archives them.</p></div>';
+  el.querySelectorAll('[data-history-index]').forEach(function(button){
+    button.onclick=function(){
+      var item=contexts[Number(button.getAttribute('data-history-index'))];
+      if(item)selectHistoryContext(item);
+    };
+  });
+  el.querySelectorAll('[data-history-graduates]').forEach(function(button){
+    button.onclick=function(){loadHistoryStudents(decodeURIComponent(button.getAttribute('data-history-graduates')||''),'',true);};
+  });
+}
+function selectHistoryContext(item){
+  var session=String(item.academic_session||'');
+  var term=String(item.term||'');
+  HISTORY_SELECTION={session:session,term:term};
+  var title=document.getElementById('history-section-title');
+  var meta=document.getElementById('history-section-meta');
+  var sections=document.getElementById('history-sections');
+  var students=document.getElementById('history-students');
+  if(title)title.textContent='Sections in '+session+' · '+term;
+  if(meta)meta.textContent='Read-only · '+Number(item.enrolled_students||0)+' preserved students';
+  if(students)students.innerHTML='<div class="empty" style="padding:25px">Choose a section to view the preserved roster.</div>';
+  if(!sections)return;
+  sections.innerHTML=ALL_CLASSES.map(function(key){
+    return '<button type="button" class="btn btn-outline btn-sm" data-history-class="'+key+'">'+escapeHtml(DEPTS[key]?DEPTS[key].label:key)+'</button>';
+  }).join('')+'<button type="button" class="btn btn-gold btn-sm" data-history-graduates="'+encodeURIComponent(session)+'">Graduating students</button>';
+  sections.querySelectorAll('[data-history-class]').forEach(function(button){
+    button.onclick=function(){loadHistoryStudents(session,button.getAttribute('data-history-class'),false);};
+  });
+  sections.querySelectorAll('[data-history-graduates]').forEach(function(button){
+    button.onclick=function(){loadHistoryStudents(decodeURIComponent(button.getAttribute('data-history-graduates')||''),'',true);};
+  });
+}
+function loadHistoryStudents(session,classKey,graduates){
+  var title=document.getElementById('history-student-title');
+  var meta=document.getElementById('history-student-meta');
+  var el=document.getElementById('history-students');
+  if(title)title.textContent=graduates?'Past graduating students':(DEPTS[classKey]?DEPTS[classKey].label:'Archived section')+' roster';
+  if(meta)meta.textContent='Loading · '+session+' · Read-only';
+  if(el)el.innerHTML='<div class="empty" style="padding:25px"><h3>Loading records</h3><p>Reading preserved student data…</p></div>';
+  return historyRowsForContext(session,classKey,graduates).then(function(payload){
+    renderHistoryStudents(payload&&payload.rows||[],session,classKey,graduates);
+  }).catch(function(error){
+    if(meta)meta.textContent='Read-only';
+    if(el)el.innerHTML='<div class="empty" style="padding:25px"><h3>Records unavailable</h3><p>'+escapeHtml(resultContextMessage(error))+'</p></div>';
+  });
+}
+function renderHistoryStudents(rows,session,classKey,graduates){
+  var el=document.getElementById('history-students');
+  var meta=document.getElementById('history-student-meta');
+  if(meta)meta.textContent=rows.length+' preserved record'+(rows.length===1?'':'s')+' · '+session+' · Read-only';
+  if(!el)return;
+  if(!rows.length){el.innerHTML='<div class="empty" style="padding:25px"><h3>No records in this section</h3><p>The archive contains no students for the selected filter.</p></div>';return;}
+  el.innerHTML='<table class="data-table"><thead><tr><th>#</th><th>Student</th><th>Admission no.</th><th>Historical section</th><th>Record status</th></tr></thead><tbody>'
+    +rows.map(function(row,index){
+      var status=row.enrollment_status||row.lifecycle_status||'Archived';
+      var badge=status==='graduated'?'badge-gold':status==='retained'?'badge-red':'badge-blue';
+      return '<tr><td>'+String(index+1)+'</td><td><strong>'+escapeHtml(row.name||'Unnamed student')+'</strong><div style="font-size:.68rem;color:var(--gray)">'+escapeHtml(row.gender||'')+'</div></td>'
+        +'<td>'+escapeHtml(row.admno||'--')+'</td><td>'+escapeHtml(DEPTS[row.historical_class_key]?DEPTS[row.historical_class_key].label:row.historical_class_key||classKey||'--')+'</td>'
+        +'<td><span class="badge '+badge+'">'+escapeHtml(status)+'</span></td></tr>';
+    }).join('')+'</tbody></table>';
 }
 
 // ============================================================
@@ -4300,41 +4415,26 @@ function renderSubjCfg(){
 function renderPromotionCfg(){
   var tbody=document.getElementById('promotion-cfg-tbody');
   if(!tbody)return;
-  var cfg=getCfg();
-  var src=document.getElementById('promo-source-session');
-  var tgt=document.getElementById('promo-target-session');
-  if(src)src.value=cfg.promotionSourceSession||cfg.session||DEFAULT_SESSION;
-  if(tgt)tgt.value=cfg.promotionTargetSession||nextAcademicSession(src?src.value:cfg.session)||'';
   var pc=getPromotionCfg();
-  tbody.innerHTML=SECONDARY_CLASSES.map(function(key){
+  tbody.innerHTML=PROMOTION_THRESHOLD_CLASSES.map(function(key){
     var rule=pc[key];
     return'<tr>'
       +'<td><strong>'+DEPTS[key].label+'</strong></td>'
-      +'<td><select class="sel" id="promo-target-'+key+'">'+promotionTargetOptions(rule.target)+'</select></td>'
-      +'<td><label class="toggle"><input type="checkbox" id="promo-repeat-on-'+key+'" '+(rule.repeatOn?'checked':'')+'/><span class="toggle-slider"></span></label></td>'
-      +'<td><input class="inp" type="number" min="0" max="100" id="promo-repeat-pct-'+key+'" value="'+rule.repeatPct+'" style="width:82px"/></td>'
-      +'<td><label class="toggle"><input type="checkbox" id="promo-probation-on-'+key+'" '+(rule.probationOn?'checked':'')+'/><span class="toggle-slider"></span></label></td>'
-      +'<td><input class="inp" type="number" min="0" max="100" id="promo-probation-pct-'+key+'" value="'+rule.probationPct+'" style="width:82px"/></td>'
+      +'<td><span class="badge badge-green">'+escapeHtml(DEPTS[rule.target]?DEPTS[rule.target].label:rule.target||'Final class')+'</span></td>'
+      +'<td><input class="inp" type="number" min="0" max="100" id="promo-min-pct-'+key+'" value="'+Number(rule.minimumPct||rule.repeatPct||0)+'" style="width:110px"/></td>'
+      +'<td><span class="badge badge-red">Detained / retained</span></td>'
       +'</tr>';
   }).join('');
 }
 function readPromotionCfgFromForm(){
-  var pc={};
-  SECONDARY_CLASSES.forEach(function(key){
-    var target=document.getElementById('promo-target-'+key);
-    var repeatOn=document.getElementById('promo-repeat-on-'+key);
-    var repeatPct=document.getElementById('promo-repeat-pct-'+key);
-    var probationOn=document.getElementById('promo-probation-on-'+key);
-    var probationPct=document.getElementById('promo-probation-pct-'+key);
-    pc[key]={
-      target:target?target.value:'',
-      repeatOn:repeatOn?repeatOn.checked:false,
-      repeatPct:repeatPct?Math.max(0,Math.min(100,Number(repeatPct.value||0))):40,
-      probationOn:probationOn?probationOn.checked:false,
-      probationPct:probationPct?Math.max(0,Math.min(100,Number(probationPct.value||0))):50
-    };
+  var existing=Object.assign({},getCfg().promotionCfg||{});
+  PROMOTION_THRESHOLD_CLASSES.forEach(function(key){
+    var current=Object.assign(defaultPromotionRule(key),existing[key]||{});
+    var minimum=document.getElementById('promo-min-pct-'+key);
+    var value=minimum?Math.max(0,Math.min(100,Number(minimum.value||0))):Number(current.minimumPct||current.repeatPct||0);
+    existing[key]=Object.assign({},current,{minimumPct:value,repeatOn:true,repeatPct:value});
   });
-  return pc;
+  return existing;
 }
 function removeSubject(dept,idx){
   if(!confirm('Remove this subject?'))return;
@@ -4355,7 +4455,6 @@ function addSubject(){
 function saveSettings(){
   var cfg=getCfg();
   var official=officialAcademicContext();
-  var previousSession=official.session;
   cfg.school={
     name:document.getElementById('cfg-name').value.trim()||DEFAULT_SCHOOL.name,
     addr:document.getElementById('cfg-addr').value.trim()||DEFAULT_SCHOOL.addr,
@@ -4380,23 +4479,11 @@ function saveSettings(){
       senior_secondary:el2('cfg-fee-ss')?el2('cfg-fee-ss').value:''
     }
   };
-  cfg.promotionSourceSession=el2('promo-source-session')?el2('promo-source-session').value.trim():previousSession;
-  cfg.promotionTargetSession=el2('promo-target-session')?el2('promo-target-session').value.trim():cfg.session;
   cfg.promotionCfg=readPromotionCfgFromForm();
   saveCfg(cfg);
   var sb=document.getElementById('sb-session-lbl');if(sb)sb.textContent=cfg.session+' Session';
   var hs=document.getElementById('home-session');if(hs)hs.textContent=cfg.session+' Session';
   var rcs=document.getElementById('rc-session');if(rcs)rcs.value=CONTEXT_EXPLICIT?getActiveSession():cfg.session;
-  if(previousSession!==cfg.session){
-    clearSessionCaches();renderHome();
-    var ps=document.getElementById('promo-source-session');if(ps)ps.value=previousSession;
-    var pt=document.getElementById('promo-target-session');if(pt)pt.value=cfg.session;
-    setTimeout(function(){
-      if(confirm('Session changed from '+previousSession+' to '+cfg.session+'. Run automatic secondary carry forward now?')){
-        applyCarryForward(true);
-      }
-    },200);
-  }
   // Sync to Supabase
   dbUpsertSettings('app_config',JSON.stringify(cfg))
     .then(function(){showToast('Settings synced to cloud ✓');showSaved();})

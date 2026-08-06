@@ -117,6 +117,13 @@ module.exports = async function resultData(req, res) {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
       })
+    : action === 'history.read' || action === 'history.students' || action === 'history.graduates'
+      ? await supabaseRpc('school_result_history_read', {
+        p_session_id: session.sessionId,
+        p_session_secret: session.sessionSecret,
+        p_action: action.slice('history.'.length),
+        p_payload: requestPayload,
+      })
     : await supabaseRpc('school_result_api', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
