@@ -2654,13 +2654,13 @@ function renderAcademicContextModal(){
 
 function enterClass(key){
   if(!DEPTS[key]){showToast('Unknown class','error');return;}
-  var titleEl=document.getElementById('modal-term-title');
-  var clsEl=document.getElementById('modal-term-class');
-  if(titleEl)titleEl.textContent='Choose academic context';
-  if(clsEl)clsEl.textContent=DEPTS[key].label;
-  window._pendingClassKey=key;
-  renderAcademicContextModal();
-  document.getElementById('modal-term').style.display='flex';
+  var official=officialAcademicContext();
+  applyClassContext(
+    key,
+    official.session,
+    official.term,
+    !isOfficialOpenContext(official.session,official.term)
+  );
 }
 
 function applyClassContext(key,selectedSession,selectedTerm,readOnly){
@@ -2808,14 +2808,25 @@ function renderHistoryContexts(){
   var contexts=Array.isArray(HISTORY_DATA.contexts)?HISTORY_DATA.contexts:[];
   var groups=[];
   var bySession={};
+  var termOrder={'1st Term':1,'2nd Term':2,'3rd Term':3};
+  var seenTerms={};
   contexts.forEach(function(item,index){
     var session=String(item&&item.academic_session||'').trim();
-    if(!session)return;
+    var term=String(item&&item.term||'').trim();
+    if(!session||!Object.prototype.hasOwnProperty.call(termOrder,term))return;
+    var identity=session+'|'+term;
+    if(seenTerms[identity])return;
+    seenTerms[identity]=true;
     if(!bySession[session]){
       bySession[session]={session:session,terms:[]};
       groups.push(bySession[session]);
     }
     bySession[session].terms.push({item:item,index:index});
+  });
+  groups.forEach(function(group){
+    group.terms.sort(function(a,b){
+      return termOrder[String(a.item.term||'')]-termOrder[String(b.item.term||'')];
+    });
   });
   if(count)count.textContent=groups.length+' saved session'+(groups.length===1?'':'s');
   var html=groups.map(function(group,groupIndex){
