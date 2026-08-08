@@ -1,14 +1,15 @@
 'use strict';
 
-const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
+const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://gnixdjglpsaarlrzqgdg.supabase.co';
 const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImduaXhkamdscHNhYXJscnpxZ2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNDA3OTYsImV4cCI6MjEwMTcxNjc5Nn0.3VOg2DC9yh26lGcBeNkrFgZ2ViHocD2WCHqYOXBRHV4';
 const COOKIE_NAME = 'wts_result_session';
 const SESSION_MAX_AGE = 8 * 60 * 60;
 const DEFAULT_ALLOWED_ORIGINS = new Set([
   'https://wts-result-system.vercel.app',
+  'https://first-choice-result-portal.vercel.app',
 ]);
 
 function allowedOrigins() {
@@ -78,13 +79,13 @@ async function readJsonBody(req) {
   }
 }
 
-async function supabaseRpc(name, body) {
+async function supabaseRpc(name, body, accessToken) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
     },
     body: JSON.stringify(body),
   });
@@ -96,6 +97,33 @@ async function supabaseRpc(name, body) {
   }
   if (!response.ok && !payload?.code) {
     return { ok: false, code: 'IDENTITY_SERVICE_UNAVAILABLE' };
+  }
+  return payload;
+}
+
+function bearerTokenFromRequest(req) {
+  const value = String(req.headers.authorization || '');
+  return /^Bearer\s+(.+)$/i.test(value) ? value.replace(/^Bearer\s+/i, '').trim() : null;
+}
+
+async function supabaseAuthRequest(path, body, accessToken) {
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: SUPABASE_KEY,
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const error = new Error(payload.msg || payload.message || payload.error_description || 'Authentication failed');
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
   return payload;
 }
@@ -126,5 +154,7 @@ module.exports = {
   sessionFromRequest,
   setSecurityHeaders,
   setSessionCookie,
+  bearerTokenFromRequest,
+  supabaseAuthRequest,
   supabaseRpc,
 };
