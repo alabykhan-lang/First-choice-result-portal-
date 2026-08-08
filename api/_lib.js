@@ -1,9 +1,12 @@
+Exit code: 0
+Wall time: 0.7 seconds
+Output:
 'use strict';
 
 const SUPABASE_URL = process.env.FIRST_CHOICE_SUPABASE_URL || 'https://gnixdjglpsaarlrzqgdg.supabase.co';
 const SUPABASE_KEY = process.env.FIRST_CHOICE_SUPABASE_PUBLISHABLE_KEY
   || process.env.FIRST_CHOICE_SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImduaXhkamdscHNhYXJscnpxZ2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNDA3OTYsImV4cCI6MjEwMTcxNjc5Nn0.3VOg2DC9yh26lGcBeNkrFgZ2ViHocD2WCHqYOXBRHV4';
+  || 'sb_publishable_o8331Jqp1ip_ka3dlXpt6w_Rej8W3lr';
 const COOKIE_NAME = 'wts_result_session';
 const SESSION_MAX_AGE = 8 * 60 * 60;
 const DEFAULT_ALLOWED_ORIGINS = new Set([
