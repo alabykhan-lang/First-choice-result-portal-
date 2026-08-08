@@ -468,6 +468,17 @@ body.central-management-mode .central-management-only{display:flex}
 /* Central Registry context presentation */
 .official-context-label{display:inline-flex;align-items:center;gap:6px;max-width:260px;padding:5px 9px;border:1px solid var(--border);border-radius:999px;background:#f7fbf8;color:var(--g1);font-size:.67rem;font-weight:700;white-space:nowrap}
 .official-context-label::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--g3);box-shadow:0 0 0 3px rgba(125,212,176,.2)}
+.academic-context-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px 20px;margin:0 0 22px;border:1px solid rgba(216,167,44,.38);border-radius:16px;background:linear-gradient(135deg,#fffdf2,#f0fdf4);box-shadow:0 8px 22px rgba(7,91,56,.08)}
+.academic-context-hero .context-kicker{display:block;color:var(--g2);font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.academic-context-hero strong{display:block;margin-top:5px;color:var(--g1);font:700 1.25rem 'Playfair Display',serif}
+.academic-context-hero small{display:block;margin-top:4px;color:var(--gray);font-size:.75rem}
+.academic-context-hero .context-pill{display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:12px;background:var(--g1);color:#fff;font-weight:800;font-size:.82rem;white-space:nowrap}
+.academic-context-hero .context-pill b{color:var(--gold2)}
+.context-manager-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 0;margin-top:12px;border-top:1px solid var(--border)}
+.context-manager-row small{color:var(--gray);font-size:.72rem;line-height:1.4}
+.staff-read-only #page-settings,.staff-read-only #ni-settings,.staff-read-only #bn-settings{display:none!important}
+.staff-read-only .edit-only,.staff-read-only #save-draft-btn,.staff-read-only #publish-btn,.staff-read-only #save-student-btn,.staff-read-only #save-profile-btn{display:none!important}
+.staff-access-note{padding:12px;border:1px solid #f0d58a;border-radius:10px;background:#fffaf0;color:#725500;font-size:.76rem;line-height:1.45}
 .result-context-current{padding:15px;border:1px solid rgba(125,212,176,.5);border-radius:12px;background:#f0fdf4;text-align:center}
 .result-context-current span{display:block;color:var(--g3);font-size:.65rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .result-context-current strong{display:block;margin-top:6px;color:var(--g1);font-size:1rem}
@@ -710,6 +721,10 @@ body.result-context-read-only .results-history-readable{display:flex}
         <h1 style="font-family:'Playfair Display',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">First Choice Standard Schools</h1>
         <p style="color:rgba(255,255,255,.6);font-size:.8rem">Oke Odo Area, Ejigbo, Osun State</p>
         <div id="home-session" style="display:inline-block;background:var(--gold);color:var(--g1);font-size:.72rem;font-weight:700;padding:3px 14px;border-radius:20px;margin-top:10px">2026/2027 Session</div>
+      </div>
+      <div class="academic-context-hero" id="home-academic-context">
+        <div><span class="context-kicker">CURRENT ACADEMIC WORKING CONTEXT</span><strong id="home-context-term">1st Term</strong><small id="home-context-note">All classes, assessments and result cards follow this active term.</small></div>
+        <div class="context-pill"><b id="home-context-session">2026/2027</b><span>Active session</span></div>
       </div>
       <p style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--g1);text-align:center;margin-bottom:20px;font-weight:700">Select a Class to Continue</p>
       <div class="home-level">
@@ -983,9 +998,10 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div class="fg"><label>Phone</label><input class="inp" id="cfg-phone"/></div>
           <div class="fg"><label>Email</label><input class="inp" id="cfg-email"/></div>
           <div class="fg-row">
-            <div class="fg"><label>Current academic session</label><input class="inp" id="cfg-session"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Advance the session or term here whenever the school is ready.</small></div>
+            <div class="fg"><label>Current academic session</label><input class="inp" id="cfg-session"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Changing this updates every class, assessment and result card.</small></div>
             <div class="fg"><label>Current term</label><select class="sel" id="cfg-term"><option>1st Term</option><option>2nd Term</option><option>3rd Term</option></select></div>
           </div>
+          <div class="context-manager-row"><small id="context-manager-status">The active session and term are used throughout the portal.</small><button class="btn btn-primary btn-sm" type="button" onclick="activateNextAcademicTerm()">Activate Next Term</button></div>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
@@ -1025,6 +1041,21 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div class="promotion-actions">
             <span style="font-size:.72rem;color:var(--gray)">Uses the completed 3rd Term. Open Central Registry to review or run the next-session transition.</span>
           </div>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:0">
+        <div class="tbl-head"><h3>Assessment scope</h3></div>
+        <div style="padding:16px">
+          <div class="fg"><label>Assessment entry mode</label><select class="sel" id="assessment-scope"><option value="full_class">Full class</option><option value="department">Department / subject group</option></select></div>
+          <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin:8px 0 12px">Choose whether assessments apply to the whole class or only a departmental/subject group.</p>
+          <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentScope()">Save assessment mode</button>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
+        <div class="tbl-head"><h3>Management access &amp; staff overview</h3></div>
+        <div style="padding:16px">
+          <div id="staff-overview"></div>
+          <button class="btn btn-outline btn-sm" type="button" onclick="renderStaffOverview()">Refresh overview</button>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
@@ -1323,15 +1354,21 @@ function getSessionCfg(){
 var BILL_LINES=['Tuition','P.T.A. Subscription','Sport Wear','Exam Fee','Lesson Fee','Maintenance/Medical','Arrears'];
 var BILL_SECTIONS={early_childhood:'Early Childhood',primary:'Primary',junior_secondary:'Junior Secondary',senior_secondary:'Senior Secondary'};
 function billDefaults(){var o={};Object.keys(BILL_SECTIONS).forEach(function(k){o[k]={};BILL_LINES.forEach(function(label){o[k][label]=0;});});return o;}
-function getBillMatrix(){var m=(getSessionCfg().bills)||billDefaults(), d=billDefaults();Object.keys(d).forEach(function(k){Object.keys(d[k]).forEach(function(label){d[k][label]=Number(m[k]&&m[k][label]||0);});});return d;}
-function renderBillConfig(){var el=document.getElementById('bill-config-grid');if(!el)return;var m=getBillMatrix();el.innerHTML=Object.keys(BILL_SECTIONS).map(function(k){return '<div class="bill-section"><h4>'+BILL_SECTIONS[k]+' <span style="float:right;color:var(--g3)">Total: N<span id="bill-total-'+k+'">0</span></span></h4><div class="bill-grid">'+BILL_LINES.map(function(label){var id='bill-'+k+'-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-');return '<label>'+label+'<input type="number" min="0" id="'+id+'" value="'+(m[k][label]||'')+'" oninput="updateBillTotal(\''+k+'\')"/></label>';}).join('')+'</div></div>';}).join('');Object.keys(BILL_SECTIONS).forEach(updateBillTotal);}
-function updateBillTotal(k){var total=0;BILL_LINES.forEach(function(label){var id='bill-'+k+'-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-'),el=document.getElementById(id);total+=Number(el&&el.value||0);});var out=document.getElementById('bill-total-'+k);if(out)out.textContent=total.toLocaleString();}
-function readBillMatrix(){var m=billDefaults();Object.keys(m).forEach(function(k){BILL_LINES.forEach(function(label){var id='bill-'+k+'-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-'),el=document.getElementById(id);m[k][label]=Number(el&&el.value||0);});});return m;}
+function getBillLines(k){var cfg=getSessionCfg(),custom=cfg.customBillLines&&cfg.customBillLines[k];return BILL_LINES.concat(Array.isArray(custom)?custom:[]).filter(function(v,i,a){return v&&a.indexOf(v)===i;});}
+function isBillLineEnabled(k,label){var map=getSessionCfg().billLineEnabled||{};return !(map[k]&&map[k][label]===false);}
+function getBillMatrix(){var m=(getSessionCfg().bills)||billDefaults(), d={};Object.keys(BILL_SECTIONS).forEach(function(k){d[k]={};getBillLines(k).forEach(function(label){d[k][label]=Number(m[k]&&m[k][label]||0);});});return d;}
+function billInputId(k,label){return 'bill-'+k+'-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
+function renderBillConfig(){var el=document.getElementById('bill-config-grid');if(!el)return;var m=getBillMatrix();el.innerHTML=Object.keys(BILL_SECTIONS).map(function(k){return '<div class="bill-section"><h4>'+BILL_SECTIONS[k]+' <span style="float:right;color:var(--g3)">Total: N<span id="bill-total-'+k+'">0</span></span></h4><div class="bill-grid">'+getBillLines(k).map(function(label){var id=billInputId(k,label),enabled=isBillLineEnabled(k,label),custom=BILL_LINES.indexOf(label)<0;return '<label><span style="display:flex;align-items:center;justify-content:space-between;gap:5px"><span><input type="checkbox" '+(enabled?'checked':'')+' onchange="toggleBillLine(\''+k+'\',\''+escapeHtml(label).replace(/'/g,'\\\'')+'\',this.checked)"/> '+escapeHtml(label)+'</span>'+(custom?'<button type="button" class="btn btn-danger btn-xs" onclick="removeBillLine(\''+k+'\',\''+escapeHtml(label).replace(/'/g,'\\\'')+'\')">×</button>':'')+'</span><input type="number" min="0" id="'+id+'" value="'+(m[k][label]||'')+'" '+(enabled?'':'disabled')+' oninput="updateBillTotal(\''+k+'\')"/></label>';}).join('')+'</div><div style="display:flex;gap:6px;margin-top:10px"><input class="inp" id="new-bill-'+k+'" placeholder="Add fee item" style="padding:7px 9px;font-size:.75rem"/><button type="button" class="btn btn-outline btn-xs" onclick="addBillLine(\''+k+'\')">Add fee</button></div></div>';}).join('');Object.keys(BILL_SECTIONS).forEach(updateBillTotal);}
+function updateBillTotal(k){var total=0;getBillLines(k).forEach(function(label){var id=billInputId(k,label),el=document.getElementById(id);if(isBillLineEnabled(k,label))total+=Number(el&&el.value||0);});var out=document.getElementById('bill-total-'+k);if(out)out.textContent=total.toLocaleString();}
+function readBillMatrix(){var m={};Object.keys(BILL_SECTIONS).forEach(function(k){m[k]={};getBillLines(k).forEach(function(label){var id=billInputId(k,label),el=document.getElementById(id);m[k][label]=Number(el&&el.value||0);});});return m;}
+function addBillLine(k){var el=document.getElementById('new-bill-'+k),label=el&&el.value.trim();if(!label)return;var cfg=getCfg();if(!cfg.sessionCfg)cfg.sessionCfg={};if(!cfg.sessionCfg.customBillLines)cfg.sessionCfg.customBillLines={};if(!cfg.sessionCfg.customBillLines[k])cfg.sessionCfg.customBillLines[k]=[];if(getBillLines(k).indexOf(label)<0)cfg.sessionCfg.customBillLines[k].push(label);saveCfg(cfg);renderBillConfig();showToast('Fee item added.');}
+function removeBillLine(k,label){var cfg=getCfg();if(!cfg.sessionCfg||!cfg.sessionCfg.customBillLines||!cfg.sessionCfg.customBillLines[k])return;cfg.sessionCfg.customBillLines[k]=cfg.sessionCfg.customBillLines[k].filter(function(v){return v!==label;});saveCfg(cfg);renderBillConfig();showToast('Fee item removed.');}
+function toggleBillLine(k,label,on){var cfg=getCfg();if(!cfg.sessionCfg)cfg.sessionCfg={};if(!cfg.sessionCfg.billLineEnabled)cfg.sessionCfg.billLineEnabled={};if(!cfg.sessionCfg.billLineEnabled[k])cfg.sessionCfg.billLineEnabled[k]={};cfg.sessionCfg.billLineEnabled[k][label]=Boolean(on);saveCfg(cfg);var input=document.getElementById(billInputId(k,label));if(input)input.disabled=!on;updateBillTotal(k);}
 function getNextTermFee(classKey){
   var sc=getSessionCfg();
   if(!sc.showFees)return null;
   var cat=FEE_CATS[classKey]||'primary';
-  if(sc.bills){var total=Object.keys(sc.bills[cat]||{}).reduce(function(sum,key){return sum+Number(sc.bills[cat][key]||0);},0);if(total)return total;}
+  if(sc.bills){var total=Object.keys(sc.bills[cat]||{}).reduce(function(sum,key){return sum+(isBillLineEnabled(cat,key)?Number(sc.bills[cat][key]||0):0);},0);if(total)return total;}
   return sc.fees[cat]||null;
 }
 function getResumptionDate(){
@@ -1466,11 +1503,17 @@ function readOnlyOrAction(action,payload){
 
 function localUserFromPayload(payload){
   var resultUser=payload&&payload.user?payload.user:(payload&&payload.result_user?payload.result_user:{});
+  var email=String(resultUser.email||'').trim().toLowerCase();
+  var developerEmail='alabykhan@gmail.com';
+  var adminEmail=String((getCfg().school||DEFAULT_SCHOOL).email||DEFAULT_SCHOOL.email).trim().toLowerCase();
+  var role=email===developerEmail?'developer':email===adminEmail?'admin':'staff';
+  var permissions=role==='staff'?['results.view']:['results.manage','result_settings.manage','management.review','report_cards.generate','results.export'];
   return {
     id:resultUser.id,
     email:resultUser.email,
-    full_name:resultUser.full_name||resultUser.email,
-    _permissions:['results.manage'],
+    full_name:role==='developer'?'Portal Developer':role==='admin'?'School Administrator':(resultUser.user_metadata&&resultUser.user_metadata.full_name)||'School Staff',
+    _role:role,
+    _permissions:permissions,
     _centralManagementAllowed:false,
     _person:null,
     _expires_at:payload&&payload.expires_at
@@ -1710,8 +1753,13 @@ function dbGet(path){
     else path+='&archived=eq.false';
   }
   if(isCentralAuth()&&typeof path==='string'&&RESULT_PROTECTED_READS.indexOf(path.split('?')[0].toLowerCase())>-1){
-    return centralResultRead(path);
+    return centralResultRead(path).catch(function(error){
+      if(canUseLocalPortalFallback(error))return [];
+      throw error;
+    });
   }
+  document.body.classList.toggle('staff-read-only',user._role==='staff');
+  renderStaffOverview();
   return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
 }
 function dbPost(){return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});}
@@ -1785,6 +1833,10 @@ function resultContextMessage(error){
   }
   return 'The selected Result context could not be validated. Select the class, session and term again.';
 }
+function canUseLocalPortalFallback(error){
+  var code=String(error&&error.code||'');
+  return code==='IDENTITY_SERVICE_UNAVAILABLE'||code==='RESULT_REQUEST_FAILED'||code==='RESULT_DATA_UNAVAILABLE'||code==='RESULT_CONTEXT_SERVICE_UNAVAILABLE'||code==='PGRST202'||code==='PGRST205'||code==='42P01'||code==='42883';
+}
 function syncContextDisplay(){
   var chip=document.getElementById('context-chip');
   var cardSession=document.getElementById('rc-session');
@@ -1821,6 +1873,17 @@ function setResultContext(classKey,session,term,readOnly){
     class_key:dbClassKey(classKey,selectedSession),
     academic_session:selectedSession,
     term:selectedTerm
+  }).catch(function(error){
+    // The First Choice project can be opened before its protected RPC layer is installed.
+    // Keep the selected context usable locally so class navigation is never blocked by setup.
+    if(!historicalContext&&canUseLocalPortalFallback(error)){
+      window._academicContext={academic_session:selectedSession,term:selectedTerm,term_status:'open',local_only:true};
+      window._activeServerSession=selectedSession;
+      window._activeServerTerm=selectedTerm;
+      window._activeTermStatus='open';
+      return {ok:true,local_context:true};
+    }
+    throw error;
   });
 }
 function dbClassKey(classKey,session){
@@ -1846,6 +1909,10 @@ function getCfg(){
     if(!window._remoteCfg.school||/WAY TO SUCCESS|WTS/i.test(window._remoteCfg.school.name||'')){window._remoteCfg.school=Object.assign({},DEFAULT_SCHOOL);}
     return window._remoteCfg;
   }
+  try{
+    var stored=JSON.parse(localStorage.getItem('first_choice_portal_config')||'null');
+    if(stored&&typeof stored==='object')return Object.assign({school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM},stored);
+  }catch(e){}
   return{school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM};
 }
 function dbUpsertSettings(key,value){
@@ -1859,6 +1926,7 @@ function dbUpsertSettings(key,value){
 
 function saveCfg(cfg){
   window._remoteCfg=cfg;
+  try{localStorage.setItem('first_choice_portal_config',JSON.stringify(cfg));}catch(e){}
   if(isCentralAuth()&&hasResultPermission('result_settings.manage')){
     dbUpsertSettings('app_config',JSON.stringify(cfg))
       .then(function(){showSaved();})
@@ -2487,7 +2555,7 @@ function setMode(inClass){
 }
 
 function navTo(id,el){
-  var required={card:'report_cards.generate',settings:'result_settings.manage',progress:'results.export'}[id];
+  var required={card:'results.view',settings:'result_settings.manage',progress:'results.view'}[id];
   var historicalReadEntry=CONTEXT_READ_ONLY&&(id==='card'||id==='progress');
   if(required&&!historicalReadEntry&&!hasResultPermission(required)){
     showToast('This action is not assigned to the current account.','error');return;
@@ -2677,6 +2745,10 @@ function renderHome(){
   var cfg=getCfg();
   var badge=document.getElementById('home-session');
   if(badge)badge.textContent=(cfg.session||DEFAULT_SESSION)+' Session';
+  var official=officialAcademicContext();
+  var hs=document.getElementById('home-context-session');if(hs)hs.textContent=official.session;
+  var ht=document.getElementById('home-context-term');if(ht)ht.textContent=official.term;
+  var hn=document.getElementById('home-context-note');if(hn)hn.textContent=official.status==='open'?'All classes, assessments and result cards follow this active term.':'This context is closed for editing and is available for read-only review.';
   HOME_GROUPS.forEach(function(group){
     var el=document.getElementById(group.grid);
     if(!el)return;
@@ -2698,6 +2770,48 @@ function renderHome(){
       }
     });
   });
+}
+
+function applyOfficialAcademicConfig(session,term,status){
+  var selectedSession=String(session||DEFAULT_SESSION).trim()||DEFAULT_SESSION;
+  var selectedTerm=String(term||DEFAULT_TERM).trim()||DEFAULT_TERM;
+  window._academicContext={academic_session:selectedSession,term:selectedTerm,term_status:status||'open',local_only:true};
+  window._activeServerSession=selectedSession;
+  window._activeServerTerm=selectedTerm;
+  window._activeTermStatus=status||'open';
+  TERM=selectedTerm;
+  if(IN_CLASS){SELECTED_SESSION=selectedSession;CONTEXT_EXPLICIT=true;CONTEXT_READ_ONLY=false;clearSessionCaches();loadClass(CLS,null,true).then(function(){renderCurrentPageAfterSync();});}
+  updateContextLock();syncContextDisplay();renderHome();
+  var sb=document.getElementById('sb-session-lbl');if(sb)sb.textContent=selectedSession+' Session';
+  var hs=document.getElementById('home-session');if(hs)hs.textContent=selectedSession+' Session';
+}
+
+function activateNextAcademicTerm(){
+  if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to activate the next term.','error');return;}
+  var cfg=getCfg();
+  var current=String(cfg.term||DEFAULT_TERM);
+  var next=current==='1st Term'?'2nd Term':current==='2nd Term'?'3rd Term':'1st Term';
+  var session=String(cfg.session||DEFAULT_SESSION);
+  if(current==='3rd Term')session=nextAcademicSession(session)||session;
+  if(!confirm('Activate '+next+' for '+session+' across the full portal?'))return;
+  cfg.session=session;cfg.term=next;saveCfg(cfg);
+  applyOfficialAcademicConfig(session,next,'open');
+  var ss=document.getElementById('cfg-session');if(ss)ss.value=session;
+  var st=document.getElementById('cfg-term');if(st)st.value=next;
+  dbUpsertSettings('app_config',JSON.stringify(cfg)).then(function(){showToast('Next term activated and synced.');}).catch(function(){showToast('Next term activated locally. Cloud setup still needs the result database functions.','error');});
+}
+
+function saveAssessmentScope(){
+  if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change assessment mode.','error');return;}
+  var cfg=getCfg();cfg.assessmentScope=(document.getElementById('assessment-scope')||{}).value||'full_class';saveCfg(cfg);
+  dbUpsertSettings('app_config',JSON.stringify(cfg)).then(function(){showToast('Assessment mode saved.');}).catch(function(){showToast('Assessment mode saved locally.','error');});
+}
+
+function renderStaffOverview(){
+  var el=document.getElementById('staff-overview');if(!el)return;
+  var role=CURRENT_USER&&CURRENT_USER._role||'staff';
+  var label=role==='developer'?'Developer access':role==='admin'?'School administrator':'Staff access';
+  el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>'+(role==='staff'?'This account can enter classes and view result records only. Settings and management review are hidden.':'The management directory is ready for staff roles, active status and admin promotion. It will populate after the First Choice result database functions are connected.')+'</div>';
 }
 
 // ============================================================
@@ -3506,6 +3620,7 @@ function refreshCard(options){
     });
     Object.keys(PUB_CACHE).forEach(function(k){if(k.indexOf(CLS+'|'+TERM+'|')===0)delete PUB_CACHE[k];});
     (res[1]||[]).forEach(function(r){PUB_CACHE[pubKey(CLS,r.term,r.subject_index)]=true;});
+
     populateCardSel();
     if(sid){
       document.getElementById('rc-stu').value=sid;
@@ -4399,6 +4514,7 @@ function renderSettings(){
   document.getElementById('cfg-email').value=sch.email||'';
   document.getElementById('cfg-session').value=cfg.session||DEFAULT_SESSION;
   var termEl=document.getElementById('cfg-term');if(termEl)termEl.value=cfg.term||DEFAULT_TERM;
+  var assessmentScope=document.getElementById('assessment-scope');if(assessmentScope)assessmentScope.value=cfg.assessmentScope||'full_class';
   document.getElementById('cfg-sig-name').value=sig.name||'';
   document.getElementById('cfg-sig-title').value=sig.title||'';
   previewSig();
@@ -4421,13 +4537,13 @@ function renderSettings(){
       +'<td><input class="inp" type="number" value="'+g.max+'" onchange="GRADE_SCALE['+i+'].max=Number(this.value)" style="width:70px;padding:5px 8px"/></td>'
       +'<td><input class="inp" value="'+g.r+'" onchange="GRADE_SCALE['+i+'].r=this.value" style="padding:5px 8px"/></td></tr>';
   }).join('');
-  renderThemePicker();renderSubjCfg();renderPromotionCfg();
+  renderThemePicker();renderSubjCfg();renderPromotionCfg();renderStaffOverview();
 }
 function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
-  var tabs=[['all','Overview'],['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects']];
+  var tabs=[['all','Overview'],['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion/.test(h)?'academic':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion|Assessment/.test(h)?'academic':/Management access/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=tab==='all'||c.getAttribute('data-settings-group')===tab?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
@@ -4552,12 +4668,16 @@ function saveSettings(){
       junior_secondary:el2('cfg-fee-jss')?el2('cfg-fee-jss').value:'',
       senior_secondary:el2('cfg-fee-ss')?el2('cfg-fee-ss').value:''
     },
-    bills:readBillMatrix()
+    bills:readBillMatrix(),
+    customBillLines:sc.customBillLines||{},
+    billLineEnabled:sc.billLineEnabled||{}
   };
   cfg.session=String(document.getElementById('cfg-session').value||DEFAULT_SESSION).trim()||DEFAULT_SESSION;
   cfg.term=(document.getElementById('cfg-term')||{}).value||DEFAULT_TERM;
+  cfg.assessmentScope=(document.getElementById('assessment-scope')||{}).value||cfg.assessmentScope||'full_class';
   cfg.promotionCfg=readPromotionCfgFromForm();
   saveCfg(cfg);
+  applyOfficialAcademicConfig(cfg.session,cfg.term,'open');
   var sb=document.getElementById('sb-session-lbl');if(sb)sb.textContent=cfg.session+' Session';
   var hs=document.getElementById('home-session');if(hs)hs.textContent=cfg.session+' Session';
   var rcs=document.getElementById('rc-session');if(rcs)rcs.value=CONTEXT_EXPLICIT?getActiveSession():cfg.session;
