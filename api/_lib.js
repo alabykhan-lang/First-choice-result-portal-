@@ -1,10 +1,9 @@
 'use strict';
 
-const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://gnixdjglpsaarlrzqgdg.supabase.co';
-const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
-  || process.env.SUPABASE_PUBLISHABLE_KEY
-  || process.env.SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImduaXhkamdscHNhYXJscnpxZ2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNDA3OTYsImV4cCI6MjEwMTcxNjc5Nn0.3VOg2DC9yh26lGcBeNkrFgZ2ViHocD2WCHqYOXBRHV4';
+const SUPABASE_URL = process.env.FIRST_CHOICE_SUPABASE_URL || 'https://gnixdjglpsaarlrzqgdg.supabase.co';
+const SUPABASE_KEY = process.env.FIRST_CHOICE_SUPABASE_PUBLISHABLE_KEY
+  || process.env.FIRST_CHOICE_SUPABASE_ANON_KEY
+  || 'sb_publishable_o8331Jqp1ip_ka3dlXpt6w_Rej8W3lr';
 const COOKIE_NAME = 'wts_result_session';
 const SESSION_MAX_AGE = 8 * 60 * 60;
 const DEFAULT_ALLOWED_ORIGINS = new Set([
@@ -101,6 +100,28 @@ async function supabaseRpc(name, body, accessToken) {
   return payload;
 }
 
+async function supabaseRest(resource, options = {}, accessToken) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${resource}`, {
+    method: options.method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Prefer: options.prefer || 'return=representation',
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
+    },
+    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+  });
+  let payload = null;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok) {
+    const error = new Error(payload?.message || payload?.hint || 'Supabase request failed');
+    error.status = response.status;
+    error.payload = payload || { code: 'SUPABASE_REQUEST_FAILED' };
+    throw error;
+  }
+  return payload;
+}
+
 function bearerTokenFromRequest(req) {
   const value = String(req.headers.authorization || '');
   return /^Bearer\s+(.+)$/i.test(value) ? value.replace(/^Bearer\s+/i, '').trim() : null;
@@ -156,5 +177,6 @@ module.exports = {
   setSessionCookie,
   bearerTokenFromRequest,
   supabaseAuthRequest,
+  supabaseRest,
   supabaseRpc,
 };

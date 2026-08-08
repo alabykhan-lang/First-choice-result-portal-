@@ -1,7 +1,7 @@
-# WTS Result Management System
+# First Choice Standard Schools Result Portal
 
-**Way To Success Standard Schools**  
-Ifedapo Community, Oko/Ijado Road, Ejigbo, Osun State
+**First Choice Standard Schools**
+Oke Odo Area, Ejigbo, Osun State, Nigeria
 
 ---
 
@@ -33,6 +33,10 @@ A complete school result management system for recording, computing and generati
 | JSS1 | A, B |
 
 ## Deployment
+
+## Independent database
+
+Run `docs/first-choice-supabase-bootstrap.sql` once in the new First Choice Supabase project's SQL Editor. It creates the independent result tables and RLS policies; it does not copy or modify the old school's database.
 
 ## Android App
 
