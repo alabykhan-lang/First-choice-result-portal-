@@ -5,7 +5,7 @@ const {
   readJsonBody,
   requestOriginAllowed,
   sendJson,
-  sessionFromRequest,
+  bearerTokenFromRequest,
   supabaseRpc,
 } = require('./_lib');
 
@@ -35,8 +35,8 @@ module.exports = async function resultCorrection(req, res) {
     return;
   }
 
-  const session = sessionFromRequest(req);
-  if (!session) {
+  const accessToken = bearerTokenFromRequest(req);
+  if (!accessToken) {
     sendJson(res, 401, { ok: false, code: 'RESULT_SESSION_REQUIRED' });
     return;
   }
@@ -74,8 +74,8 @@ module.exports = async function resultCorrection(req, res) {
   }
 
   const payload = await supabaseRpc('school_result_external_score_correction', {
-    p_session_id: session.sessionId,
-    p_session_secret: session.sessionSecret,
+    p_session_id: null,
+    p_session_secret: null,
     p_student_id: body.student_id.trim(),
     p_class_key: body.class_key.trim(),
     p_subject_index: subjectIndex,
@@ -87,7 +87,7 @@ module.exports = async function resultCorrection(req, res) {
     p_correction_reason: reason,
     p_audit_metadata: body.audit_metadata,
     p_source_application: source,
-  });
+  }, accessToken);
 
   if (!payload?.ok) {
     sendJson(res, authStatus(payload?.code), payload || {

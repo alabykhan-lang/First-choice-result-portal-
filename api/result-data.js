@@ -2,10 +2,10 @@
 
 const {
   authStatus,
+  bearerTokenFromRequest,
   readJsonBody,
   requestOriginAllowed,
   sendJson,
-  sessionFromRequest,
   supabaseRpc,
 } = require('./_lib');
 
@@ -20,11 +20,13 @@ module.exports = async function resultData(req, res) {
     return;
   }
 
-  const session = sessionFromRequest(req);
-  if (!session) {
+  const accessToken = bearerTokenFromRequest(req);
+  if (!accessToken) {
     sendJson(res, 401, { ok: false, code: 'RESULT_SESSION_REQUIRED' });
     return;
   }
+  const session = { sessionId: null, sessionSecret: null };
+  const authenticatedRpc = (name, payload) => supabaseRpc(name, payload, accessToken);
 
   const body = await readJsonBody(req);
   if (!body || typeof body.action !== 'string' || !body.action.trim()) {
@@ -35,14 +37,14 @@ module.exports = async function resultData(req, res) {
   const action = body.action.trim();
   const requestPayload = body.payload && typeof body.payload === 'object' ? body.payload : {};
   const payload = action.startsWith('read.')
-    ? await supabaseRpc('school_result_read_api', {
+    ? await authenticatedRpc('school_result_read_api', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_resource: action.slice('read.'.length),
         p_payload: requestPayload,
       })
     : action === 'scores.enter'
-      ? await supabaseRpc('school_result_score_update', {
+      ? await authenticatedRpc('school_result_score_update', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_student_id: requestPayload.student_id || null,
@@ -56,7 +58,7 @@ module.exports = async function resultData(req, res) {
         p_exam: requestPayload.exam === '' || requestPayload.exam === undefined ? null : requestPayload.exam,
       })
     : action === 'traits.enter'
-      ? await supabaseRpc('school_result_traits_update', {
+      ? await authenticatedRpc('school_result_traits_update', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_student_id: requestPayload.student_id || null,
@@ -68,7 +70,7 @@ module.exports = async function resultData(req, res) {
         p_rating: requestPayload.rating === '' || requestPayload.rating === undefined ? null : requestPayload.rating,
       })
       : action === 'remarks.enter'
-        ? await supabaseRpc('school_result_remarks_update', {
+        ? await authenticatedRpc('school_result_remarks_update', {
           p_session_id: session.sessionId,
           p_session_secret: session.sessionSecret,
           p_student_id: requestPayload.student_id || null,
@@ -82,7 +84,7 @@ module.exports = async function resultData(req, res) {
           p_days_present: requestPayload.days_present === '' || requestPayload.days_present === undefined ? null : requestPayload.days_present,
         })
         : action === 'fees.update'
-    ? await supabaseRpc('school_result_fees_update', {
+    ? await authenticatedRpc('school_result_fees_update', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_student_id: requestPayload.student_id || null,
@@ -94,7 +96,7 @@ module.exports = async function resultData(req, res) {
         p_debt: requestPayload.debt === '' || requestPayload.debt === undefined ? null : requestPayload.debt,
       })
     : action === 'context.set'
-      ? await supabaseRpc('school_result_context_set', {
+      ? await authenticatedRpc('school_result_context_set', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_class_key: requestPayload.class_key || null,
@@ -102,23 +104,23 @@ module.exports = async function resultData(req, res) {
         p_term: requestPayload.term || null,
       })
     : action === 'context.read'
-      ? await supabaseRpc('school_result_context_read', {
+      ? await authenticatedRpc('school_result_context_read', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
       })
     : action === 'settings.app_config.update'
-      ? await supabaseRpc('school_result_app_config_update', {
+      ? await authenticatedRpc('school_result_app_config_update', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_config: requestPayload.config && typeof requestPayload.config === 'object' ? requestPayload.config : {},
       })
     : action === 'settings.read'
-    ? await supabaseRpc('school_result_settings_read', {
+    ? await authenticatedRpc('school_result_settings_read', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
       })
     : action === 'history.context.set'
-      ? await supabaseRpc('school_result_history_context_set', {
+      ? await authenticatedRpc('school_result_history_context_set', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_class_key: requestPayload.class_key || null,
@@ -126,13 +128,13 @@ module.exports = async function resultData(req, res) {
         p_term: requestPayload.term || null,
       })
     : action.startsWith('history.')
-      ? await supabaseRpc('school_result_history_read', {
+      ? await authenticatedRpc('school_result_history_read', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_action: action.slice('history.'.length),
         p_payload: requestPayload,
       })
-    : await supabaseRpc('school_result_api', {
+    : await authenticatedRpc('school_result_api', {
         p_session_id: session.sessionId,
         p_session_secret: session.sessionSecret,
         p_action: action,

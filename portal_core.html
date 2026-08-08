@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script>
-// Keep the portal locked until the server validates its HttpOnly session.
+// Keep the portal locked until the local Supabase Auth session is validated.
 document.addEventListener('DOMContentLoaded',function(){
   var a=document.getElementById('auth-screen');
   if(a)a.style.display='flex';
@@ -94,7 +94,10 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .auth-field{margin-bottom:14px}
 .auth-field label{display:block;font-size:.75rem;font-weight:700;color:var(--gray);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .auth-field input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;box-sizing:border-box;transition:border .2s}
-.auth-field input:focus{border-color:var(--g3)}
+ .auth-field input:focus{border-color:var(--g3)}
+ .auth-password{position:relative}.auth-password input{padding-right:52px}.auth-password button{position:absolute;right:8px;top:7px;border:0;background:transparent;color:var(--gray);font-size:.72rem;font-weight:700;cursor:pointer;padding:5px}
+ .auth-link{display:inline-block;color:var(--g1);font-size:.76rem;font-weight:700;text-decoration:none;cursor:pointer}.auth-link:hover{text-decoration:underline}
+ .auth-hint{font-size:.72rem;color:var(--gray);line-height:1.45;margin-top:8px}
 .auth-btn{width:100%;padding:12px;background:var(--g1);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:6px;transition:background .2s}
 .auth-btn:hover{background:var(--g2)}
 .auth-err{background:#fee2e2;color:#dc2626;padding:10px 12px;border-radius:8px;font-size:.8rem;margin-bottom:12px;display:none}
@@ -517,20 +520,26 @@ body.result-context-read-only .results-history-readable{display:flex}
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-header">
-      <img id="auth-logo" src="" alt="Way to Success Standard Schools"/>
-      <h2>Way to Success Standard Schools</h2>
+       <img id="auth-logo" src="" alt="First Choice Standard Schools"/>
+       <h2>First Choice Standard Schools</h2>
       <p>Result Management System</p>
     </div>
     <div class="auth-body">
-      <div class="auth-title">Secure WTS connection</div>
-      <div id="form-central">
-        <div id="central-err" class="auth-err show">Opening the official WTS sign-in…</div>
-        <p style="font-size:.82rem;color:var(--gray);line-height:1.6;text-align:center;margin-top:14px">
-          Results uses the central WTS Workspace sign-in. No separate Result Portal password is accepted.
-        </p>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="auth-tab-login" onclick="setAuthMode('login')">Sign In</div>
+        <div class="auth-tab" id="auth-tab-register" onclick="setAuthMode('register')">Register</div>
       </div>
+      <div id="auth-err" class="auth-err"></div>
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <div class="auth-field"><label for="auth-email">Email address</label><input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com"/></div>
+        <div class="auth-field auth-password"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" minlength="6" required placeholder="Enter your password"/><button type="button" onclick="togglePassword('auth-password',this)">Show</button></div>
+        <div class="auth-field" id="invite-field" style="display:none"><label for="auth-invite">Invite code</label><input id="auth-invite" type="text" autocomplete="off" placeholder="Enter your invite code"/><div class="auth-hint">Registration is restricted to invited First Choice staff.</div></div>
+        <button class="auth-btn" id="auth-submit" type="submit">Sign In</button>
+      </form>
+      <div style="text-align:center;margin-top:14px" id="forgot-wrap"><a class="auth-link" onclick="showForgotPassword()">Forgot password?</a></div>
+      <div id="forgot-form" style="display:none"><div class="auth-field"><label for="forgot-email">Email address</label><input id="forgot-email" type="email" autocomplete="email" required placeholder="you@example.com"/></div><button class="auth-btn" type="button" onclick="sendPasswordReset()">Send reset link</button><div style="text-align:center;margin-top:12px"><a class="auth-link" onclick="setAuthMode('login')">Back to sign in</a></div></div>
     </div>
-    <div class="auth-footer">Way to Success Standard Schools &copy; 2026</div>
+    <div class="auth-footer">First Choice Standard Schools &copy; 2026</div>
   </div>
 </div>
 
@@ -553,10 +562,6 @@ body.result-context-read-only .results-history-readable{display:flex}
     <div class="ni" id="ni-history" onclick="navTo('history',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>
       Archive &amp; History
-    </div>
-    <div class="ni central-management-only" onclick="window.open('https://wts-central-registry.vercel.app/','_blank','noopener')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Central Registry Access Management
     </div>
     <div class="ni results-management-only" onclick="navTo('settings',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1369,6 +1374,9 @@ var CURRENT_USER=null;
 var CURRENT_AUTH_MODE=null;
 var CURRENT_PERMISSIONS=[];
 var CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+var AUTH_MODE='login';
+var INVITE_CODE='AMB, ADIGUN';
+var AUTH_STORAGE_KEY='first_choice_auth_session';
 var CONTEXT_READ_ONLY=false;
 window._academicContext=null;
 window._academicHistory=[];
@@ -1377,8 +1385,30 @@ var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees
 
 function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(String(action||'').toLowerCase())>-1;}
 
+function getStoredAuthSession(){
+  try{return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)||'null');}catch(e){return null;}
+}
+function getAuthHeaders(){
+  var session=getStoredAuthSession();
+  return session&&session.access_token?{Authorization:'Bearer '+session.access_token}:{};
+}
+function storeAuthSession(session){
+  try{localStorage.setItem(AUTH_STORAGE_KEY,JSON.stringify(session||{}));}catch(e){}
+}
+function clearAuthSession(){try{localStorage.removeItem(AUTH_STORAGE_KEY);}catch(e){}}
+function authMessage(payload){
+  var code=payload&&payload.code;
+  if(code==='INVITE_CODE_INVALID')return 'That invite code is not valid.';
+  if(code==='EMAIL_NOT_CONFIRMED')return 'Please confirm your email address before signing in.';
+  if(code==='INVALID_LOGIN_CREDENTIALS')return 'The email or password is incorrect.';
+  if(code==='PASSWORD_RECOVERY_SENT')return 'If that email is registered, a password reset link has been sent.';
+  return (payload&&payload.message)||'Authentication failed. Please try again.';
+}
+
 function resultAuthRequest(method,body){
   var opts={method:method,credentials:'same-origin',headers:{'Accept':'application/json'}};
+  var localSession=getStoredAuthSession();
+  if(localSession&&localSession.access_token)opts.headers.Authorization='Bearer '+localSession.access_token;
   if(body!==undefined){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   return fetch('/api/result-auth',opts).then(function(res){
     return res.text().then(function(raw){
@@ -1394,7 +1424,7 @@ function resultDataRequest(action,payload){
   if(CONTEXT_READ_ONLY&&isResultMutationAction(action))return Promise.reject({code:'RESULT_ACADEMIC_CONTEXT_READ_ONLY'});
   return fetch('/api/result-data',{
     method:'POST',credentials:'same-origin',
-    headers:{'Accept':'application/json','Content-Type':'application/json'},
+     headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),
     body:JSON.stringify({action:action,payload:payload||{}}),
     cache:'no-store'
   }).then(function(res){
@@ -1409,9 +1439,7 @@ function resultDataRequest(action,payload){
 }
 
 function resultActionRequest(action,payload){
-  return isCentralAuth()
-    ? resultDataRequest(action,payload||{})
-    : Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
+  return resultDataRequest(action,payload||{});
 }
 function readOnlyOrAction(action,payload){
   return CONTEXT_READ_ONLY
@@ -1419,21 +1447,20 @@ function readOnlyOrAction(action,payload){
     : resultActionRequest(action,payload||{});
 }
 
-function centralUserFromPayload(payload){
-  var resultUser=payload&&payload.result_user?payload.result_user:{};
-  var permissions=(payload&&payload.permissions)||[];
+function localUserFromPayload(payload){
+  var resultUser=payload&&payload.user?payload.user:(payload&&payload.result_user?payload.result_user:{});
   return {
     id:resultUser.id,
     email:resultUser.email,
     full_name:resultUser.full_name||resultUser.email,
-    _permissions:permissions,
-    _centralManagementAllowed:payload&&payload.central_registry_management_allowed===true,
-    _person:payload&&payload.person,
+    _permissions:['results.manage'],
+    _centralManagementAllowed:false,
+    _person:null,
     _expires_at:payload&&payload.expires_at
   };
 }
 
-function isCentralAuth(){return CURRENT_AUTH_MODE==='central';}
+function isCentralAuth(){return CURRENT_AUTH_MODE==='local';}
 
 function hasResultPermission(permission){
   if(!isCentralAuth())return false;
@@ -1447,20 +1474,11 @@ function authErr(id,msg){
 }
 function authErrClear(id){document.getElementById(id).className='auth-err';}
 
-function doCentralLogin(){
-  startResultSso();
-}
-
 function loginSuccess(user,mode){
-  if(mode!=='central'){
-    showAuthScreen();
-    authErr('central-err','Use WTS Staff Login. Result Portal legacy authentication is no longer accepted.');
-    return;
-  }
   CURRENT_USER=user;
-  CURRENT_AUTH_MODE='central';
+  CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
-  CURRENT_CENTRAL_MANAGEMENT_ALLOWED=user._centralManagementAllowed===true;
+  CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
   document.getElementById('sb-user-name').textContent=user.full_name;
@@ -1473,11 +1491,7 @@ function loginSuccess(user,mode){
     badge.textContent='Result access';badge.className='badge-access';
     document.body.classList.remove('results-management-mode');
   }
-  if(CURRENT_CENTRAL_MANAGEMENT_ALLOWED){
-    document.body.classList.add('central-management-mode');
-  }else{
-    document.body.classList.remove('central-management-mode');
-  }
+  document.body.classList.remove('central-management-mode');
   // Set logo on auth screen
   var lg=document.getElementById('wts-logo');
   if(lg)document.getElementById('auth-logo').src=lg.src;
@@ -1531,159 +1545,53 @@ function restorePortalPageAfterLogin(){
 }
 
 function doLogout(){
-  var finish=function(){
+  resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(function(){
+    clearAuthSession();
     CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
     showAuthScreen();
-    var emailField=document.getElementById('central-email');
-    var passwordField=document.getElementById('central-pass');
-    if(emailField)emailField.value='';
-    if(passwordField)passwordField.value='';
-    document.querySelectorAll('.results-management-only').forEach(function(el){el.style.display='';});
-    document.querySelectorAll('.results-management-only-bn').forEach(function(el){el.style.display='';});
     navTo('home',document.getElementById('ni-home'));
-    window.location.assign('https://wts-school-platform.vercel.app/workspace');
-  };
-  resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(finish);
-}
-
-function ssoClearTransientState(){
-  try{
-    sessionStorage.removeItem('wts_pkce_verifier');
-    sessionStorage.removeItem('wts_pkce_state');
-    sessionStorage.removeItem('wts_pkce_nonce');
-  }catch(e){}
-}
-
-function ssoBytesToBase64Url(bytes){
-  var binary='';
-  for(var i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
-  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-
-function ssoRandomToken(size){
-  var bytes=new Uint8Array(size);
-  window.crypto.getRandomValues(bytes);
-  return ssoBytesToBase64Url(bytes);
-}
-
-function ssoStatus(message){
-  showAuthScreen();
-  var err=document.getElementById('central-err');
-  if(err){err.textContent=message;err.className='auth-err show';}
-}
-
-function resultSsoRequest(body){
-  return fetch('/api/result-sso-token',{
-    method:'POST',
-    credentials:'same-origin',
-    headers:{'Accept':'application/json','Content-Type':'application/json'},
-    body:JSON.stringify(body),
-    cache:'no-store'
-  }).then(function(res){
-    return res.text().then(function(raw){
-      var payload={};
-      try{payload=raw?JSON.parse(raw):{};}catch(e){payload={ok:false,code:'SSO_INVALID_RESPONSE'};}
-      if(!res.ok){payload.http_status=res.status;throw payload;}
-      return payload;
-    });
-  });
-}
-
-function completeResultSso(){
-  var params=new URLSearchParams(window.location.search);
-  var error=params.get('error')||'';
-  if(error){
-    ssoClearTransientState();
-    ssoStatus('Central WTS sign-in was not completed. Please try again.');
-    return;
-  }
-  var code=params.get('code')||'';
-  var state=params.get('state')||'';
-  var nonce=params.get('nonce')||'';
-  var verifier='';
-  var expectedState='';
-  var expectedNonce='';
-  try{
-    verifier=sessionStorage.getItem('wts_pkce_verifier')||'';
-    expectedState=sessionStorage.getItem('wts_pkce_state')||'';
-    expectedNonce=sessionStorage.getItem('wts_pkce_nonce')||'';
-  }catch(e){}
-  if(!code||!verifier||!expectedState||!expectedNonce||state!==expectedState||nonce!==expectedNonce){
-    ssoClearTransientState();
-    ssoStatus('The secure sign-in response could not be verified. Please start again.');
-    return;
-  }
-  ssoStatus('Completing secure WTS sign-in…');
-  resultSsoRequest({
-    grant_type:'authorization_code',
-    client_id:'result_portal',
-    redirect_uri:'https://wts-result-system.vercel.app/portal_core.html',
-    code:code,
-    code_verifier:verifier,
-    state:state,
-    nonce:nonce
-  }).then(function(payload){
-    ssoClearTransientState();
-    loginSuccess(centralUserFromPayload(payload),'central');
-  }).catch(function(payload){
-    ssoClearTransientState();
-    if(payload&&payload.code==='RESULT_ACCESS_NOT_GRANTED'){
-      ssoStatus('This account does not have an active Results grant.');
-    }else{
-      ssoStatus('Secure WTS sign-in was rejected. Please return to the WTS Workspace and try again.');
-    }
-  });
-}
-
-function startResultSso(){
-  if(!window.crypto||!window.crypto.subtle||!window.crypto.getRandomValues){
-    ssoStatus('This browser cannot perform secure sign-in. Please use an updated browser.');
-    return;
-  }
-  var verifier='';
-  var state='';
-  var nonce='';
-  try{
-    verifier=ssoRandomToken(64);
-    state=ssoRandomToken(24);
-    nonce=ssoRandomToken(24);
-    sessionStorage.setItem('wts_pkce_verifier',verifier);
-    sessionStorage.setItem('wts_pkce_state',state);
-    sessionStorage.setItem('wts_pkce_nonce',nonce);
-  }catch(e){
-    ssoStatus('Secure sign-in could not start. Please try again.');
-    return;
-  }
-  ssoStatus('Opening the official WTS sign-in…');
-  window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)).then(function(digest){
-    var challenge=ssoBytesToBase64Url(new Uint8Array(digest));
-    var authorize=new URL('https://wts-school-platform.vercel.app/api/sso/authorize');
-    authorize.searchParams.set('response_type','code');
-    authorize.searchParams.set('client_id','result_portal');
-    authorize.searchParams.set('redirect_uri','https://wts-result-system.vercel.app/portal_core.html');
-    authorize.searchParams.set('scope','results');
-    authorize.searchParams.set('code_challenge',challenge);
-    authorize.searchParams.set('code_challenge_method','S256');
-    authorize.searchParams.set('state',state);
-    authorize.searchParams.set('nonce',nonce);
-    window.location.replace(authorize.toString());
-  }).catch(function(){
-    ssoClearTransientState();
-    ssoStatus('Secure sign-in could not start. Please try again.');
   });
 }
 
 function checkSession(){
+  var session=getStoredAuthSession();
+  if(!session||!session.access_token){showAuthScreen();return;}
   resultAuthRequest('GET').then(function(payload){
-    if(!payload||!payload.result_user)throw {code:'RESULT_SESSION_NOT_ACTIVE'};
-    loginSuccess(centralUserFromPayload(payload),'central');
-  }).catch(function(){
-    if(new URLSearchParams(window.location.search).get('code')){
-      completeResultSso();
-    }else{
-      startResultSso();
-    }
-  });
+    if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
+    loginSuccess(localUserFromPayload(payload),'local');
+  }).catch(function(){clearAuthSession();showAuthScreen();});
+}
+
+function setAuthMode(mode){
+  AUTH_MODE=mode==='register'?'register':'login';
+  var register=AUTH_MODE==='register';
+  document.getElementById('auth-tab-login').classList.toggle('active',!register);
+  document.getElementById('auth-tab-register').classList.toggle('active',register);
+  document.getElementById('invite-field').style.display=register?'block':'none';
+  document.getElementById('auth-submit').textContent=register?'Create account':'Sign In';
+  document.getElementById('forgot-wrap').style.display=register?'none':'block';
+  document.getElementById('auth-form').style.display='block';
+  document.getElementById('forgot-form').style.display='none';
+  authErrClear('auth-err');
+}
+function togglePassword(id,button){var input=document.getElementById(id);if(!input)return;var shown=input.type==='text';input.type=shown?'password':'text';button.textContent=shown?'Show':'Hide';}
+function showForgotPassword(){document.getElementById('auth-form').style.display='none';document.getElementById('forgot-wrap').style.display='none';document.getElementById('forgot-form').style.display='block';authErrClear('auth-err');}
+function handleAuthSubmit(event){
+  event.preventDefault();
+  var email=document.getElementById('auth-email').value.trim();
+  var password=document.getElementById('auth-password').value;
+  var invite=document.getElementById('auth-invite').value.trim();
+  if(AUTH_MODE==='register'&&invite.replace(/[\s,]+/g,'').toUpperCase()!=='AMBADIGUN'){authErr('auth-err','That invite code is not valid.');return;}
+  var submit=document.getElementById('auth-submit');submit.disabled=true;submit.textContent=AUTH_MODE==='register'?'Creating account…':'Signing in…';authErrClear('auth-err');
+  resultAuthRequest('POST',{action:AUTH_MODE,email:email,password:password,invite_code:invite}).then(function(payload){
+    if(payload.session)storeAuthSession(payload.session);
+    if(!payload.user){authErr('auth-err','Account created. Check your email to confirm your account, then sign in.');setAuthMode('login');return;}
+    loginSuccess(localUserFromPayload(payload),'local');
+  }).catch(function(payload){authErr('auth-err',authMessage(payload));}).then(function(){submit.disabled=false;submit.textContent=AUTH_MODE==='register'?'Create account':'Sign In';});
+}
+function sendPasswordReset(){
+  var email=document.getElementById('forgot-email').value.trim();if(!email)return;
+  resultAuthRequest('POST',{action:'forgot_password',email:email}).then(function(payload){authErr('auth-err',authMessage(payload));}).catch(function(payload){authErr('auth-err',authMessage(payload));});
 }
 
 function showAuthScreen(){
