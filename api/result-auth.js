@@ -1,111 +1,67 @@
 'use strict';
 
 const {
+  bearerTokenFromRequest,
   clearSessionCookie,
   readJsonBody,
   requestOriginAllowed,
   sendJson,
-  sessionFromRequest,
-  setSessionCookie,
-  supabaseRpc,
+  supabaseAuthRequest,
 } = require('./_lib');
 
-function safeLoginResponse(payload) {
-  return {
-    ok: true,
-    code: payload.code,
-    auth_mode: 'central',
-    expires_at: payload.expires_at,
-    person: payload.person,
-    result_user: payload.result_user,
-    access_role: payload.access_role,
-    permissions: payload.permissions,
-    central_registry_management_allowed: payload.central_registry_management_allowed === true,
-  };
+function normalizeInvite(value) {
+  return String(value || '').replace(/[\s,]+/g, '').toUpperCase();
 }
 
-async function centralManagementAccess(sessionId, sessionSecret) {
-  try {
-    const payload = await supabaseRpc('school_result_central_management_access', {
-      p_session_id: sessionId,
-      p_session_secret: sessionSecret,
-    });
-    return payload?.ok === true && payload.central_registry_management_allowed === true;
-  } catch {
-    return false;
-  }
+function authError(res, error) {
+  const payload = error?.payload || {};
+  const message = String(payload.msg || payload.message || payload.error_description || '').toLowerCase();
+  if (message.includes('invalid login credentials')) return sendJson(res, 401, { ok: false, code: 'INVALID_LOGIN_CREDENTIALS' });
+  if (message.includes('email not confirmed')) return sendJson(res, 403, { ok: false, code: 'EMAIL_NOT_CONFIRMED' });
+  if (message.includes('already registered') || message.includes('already been registered')) return sendJson(res, 409, { ok: false, code: 'EMAIL_ALREADY_REGISTERED' });
+  sendJson(res, error?.status || 400, { ok: false, code: 'AUTH_REQUEST_FAILED', message: payload.msg || payload.message || 'Authentication failed.' });
 }
 
 module.exports = async function resultAuth(req, res) {
-  if (!requestOriginAllowed(req)) {
-    sendJson(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
-    return;
-  }
+  if (!requestOriginAllowed(req)) return sendJson(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
 
   if (req.method === 'GET') {
-    const session = sessionFromRequest(req);
-    if (!session) {
+    const token = bearerTokenFromRequest(req);
+    if (!token) return sendJson(res, 200, { ok: true, auth_mode: 'local', configured: true });
+    try {
+      const user = await supabaseAuthRequest('user', undefined, token);
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', user });
+    } catch (error) {
       clearSessionCookie(res);
-      sendJson(res, 401, { ok: false, code: 'RESULT_SESSION_REQUIRED' });
-      return;
+      return authError(res, error);
     }
-    const payload = await supabaseRpc('school_result_api', {
-      p_session_id: session.sessionId,
-      p_session_secret: session.sessionSecret,
-      p_action: 'identity.context',
-      p_payload: {},
-    });
-    if (!payload?.ok) {
-      clearSessionCookie(res);
-      sendJson(res, 401, payload || { ok: false, code: 'RESULT_SESSION_NOT_ACTIVE' });
-      return;
-    }
-    const centralRegistryManagementAllowed = await centralManagementAccess(session.sessionId, session.sessionSecret);
-    sendJson(res, 200, {
-      ...payload,
-      auth_mode: 'central',
-      central_registry_management_allowed: centralRegistryManagementAllowed,
-    });
-    return;
   }
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
-    sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
-    return;
+    return sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
   }
-
   const body = await readJsonBody(req);
-  if (!body) {
-    sendJson(res, 400, { ok: false, code: 'INVALID_JSON' });
-    return;
-  }
+  if (!body || typeof body.action !== 'string') return sendJson(res, 400, { ok: false, code: 'INVALID_JSON' });
 
-  if (body.action === 'logout') {
-    const session = sessionFromRequest(req);
-    if (session) {
-      await supabaseRpc('school_identity_session_revoke', {
-        p_session_id: session.sessionId,
-        p_session_secret: session.sessionSecret,
-        p_reason: 'RESULT_PORTAL_LOGOUT',
-      });
+  if (body.action === 'logout') return sendJson(res, 200, { ok: true, code: 'RESULT_LOGOUT_SUCCESS' });
+
+  try {
+    if (body.action === 'login') {
+      const payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload, user: payload.user });
     }
-    clearSessionCookie(res);
-    sendJson(res, 200, { ok: true, code: 'RESULT_LOGOUT_SUCCESS' });
-    return;
+    if (body.action === 'register') {
+      if (normalizeInvite(body.invite_code) !== 'AMBADIGUN') return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
+      const payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'first_choice_result' } });
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload.access_token ? payload : null, user: payload.user || null });
+    }
+    if (body.action === 'forgot_password') {
+      await supabaseAuthRequest('recover', { email: body.email, redirect_to: `${req.headers.origin || ''}/portal_core.html` });
+      return sendJson(res, 200, { ok: true, code: 'PASSWORD_RECOVERY_SENT' });
+    }
+    return sendJson(res, 400, { ok: false, code: 'AUTH_ACTION_NOT_SUPPORTED' });
+  } catch (error) {
+    return authError(res, error);
   }
-
-  if (body.action === 'change_password') {
-    sendJson(res, 403, { ok: false, code: 'CENTRAL_PASSWORD_MANAGEMENT_REQUIRED' });
-    return;
-  }
-
-  if (body.action === 'login') {
-    sendJson(res, 400, { ok: false, code: 'SSO_REQUIRED' });
-    return;
-  }
-
-  sendJson(res, 400, { ok: false, code: 'AUTH_ACTION_NOT_SUPPORTED' });
-
 };
-
