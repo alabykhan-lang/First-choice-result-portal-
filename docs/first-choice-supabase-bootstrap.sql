@@ -106,6 +106,26 @@ create table if not exists public.published_subjects (
   unique (class_key, subject_index, term, academic_session)
 );
 
+create table if not exists public.staff_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  display_name text not null default 'School Staff',
+  role text not null default 'staff' check (role in ('staff', 'admin', 'developer')),
+  suspended boolean not null default false,
+  is_developer boolean not null default false,
+  last_seen_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.portal_access_config (
+  id integer primary key default 1 check (id = 1),
+  invite_enabled boolean not null default true,
+  invite_code_hash text not null,
+  invite_hint text not null default 'AMB••••••',
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists students_class_idx on public.students(class_key, academic_session, archived);
 create index if not exists scores_class_term_idx on public.scores(class_key, academic_session, term);
 create index if not exists traits_student_term_idx on public.traits(student_id, academic_session, term);
@@ -120,6 +140,8 @@ alter table public.traits enable row level security;
 alter table public.fees enable row level security;
 alter table public.remarks enable row level security;
 alter table public.published_subjects enable row level security;
+alter table public.staff_profiles enable row level security;
+alter table public.portal_access_config enable row level security;
 
 do $$
 declare
@@ -128,6 +150,74 @@ begin
   foreach table_name in array array['app_config','academic_context','students','scores','traits','fees','remarks','published_subjects'] loop
     execute format('drop policy if exists "First Choice authenticated access" on public.%I', table_name);
     execute format('create policy "First Choice authenticated access" on public.%I for all to authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null)', table_name);
+  end loop;
+end $$;
+
+-- Management authorization stays in a non-exposed schema and is used by RLS.
+create schema if not exists private;
+create or replace function private.is_management()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.staff_profiles
+    where id = (select auth.uid())
+      and role in ('admin', 'developer')
+      and suspended = false
+  );
+$$;
+revoke all on function private.is_management() from public;
+grant execute on function private.is_management() to authenticated;
+
+drop policy if exists "First Choice authenticated access" on public.staff_profiles;
+create policy "Staff can read own profile" on public.staff_profiles
+  for select to authenticated using (id = (select auth.uid()) or (select private.is_management()));
+create policy "Management can update staff profiles" on public.staff_profiles
+  for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+create policy "Authenticated users can create own profile" on public.staff_profiles
+  for insert to authenticated with check (id = (select auth.uid()));
+
+drop policy if exists "First Choice authenticated access" on public.portal_access_config;
+create policy "Anyone can check invite configuration" on public.portal_access_config
+  for select to anon, authenticated using (true);
+create policy "Management can insert invite configuration" on public.portal_access_config
+  for insert to authenticated with check ((select private.is_management()));
+create policy "Management can update invite configuration" on public.portal_access_config
+  for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+
+drop policy if exists "First Choice authenticated access" on public.app_config;
+drop policy if exists "First Choice authenticated access" on public.academic_context;
+create policy "Signed-in users can read app config" on public.app_config
+  for select to authenticated using (true);
+create policy "Management can write app config" on public.app_config
+  for insert to authenticated with check ((select private.is_management()));
+create policy "Management can update app config" on public.app_config
+  for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+create policy "Signed-in users can read academic context" on public.academic_context
+  for select to authenticated using (true);
+create policy "Management can write academic context" on public.academic_context
+  for insert to authenticated with check ((select private.is_management()));
+create policy "Management can update academic context" on public.academic_context
+  for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+
+grant select on public.portal_access_config to anon;
+grant select, insert, update on public.staff_profiles to authenticated;
+grant select on public.staff_profiles to authenticated;
+
+-- Result records are readable by signed-in staff; management-only writes are
+-- enforced at the database boundary as well as in the portal API.
+do $$
+declare table_name text;
+begin
+  foreach table_name in array array['students','scores','traits','fees','remarks','published_subjects'] loop
+    execute format('drop policy if exists "First Choice authenticated access" on public.%I', table_name);
+    execute format('create policy "Signed-in staff can read results" on public.%I for select to authenticated using (true)', table_name);
+    execute format('create policy "Management can insert results" on public.%I for insert to authenticated with check ((select private.is_management()))', table_name);
+    execute format('create policy "Management can update results" on public.%I for update to authenticated using ((select private.is_management())) with check ((select private.is_management()))', table_name);
+    execute format('create policy "Management can delete results" on public.%I for delete to authenticated using ((select private.is_management()))', table_name);
   end loop;
 end $$;
 
@@ -148,4 +238,8 @@ insert into public.app_config (id, config) values (1, jsonb_build_object(
 
 insert into public.academic_context (id, academic_session, term, term_status)
 values (1, '2026/2027', '1st Term', 'open')
+on conflict (id) do nothing;
+
+insert into public.portal_access_config (id, invite_enabled, invite_code_hash, invite_hint)
+values (1, true, encode(digest('AMBADIGUN', 'sha256'), 'hex'), 'AMB••••••')
 on conflict (id) do nothing;

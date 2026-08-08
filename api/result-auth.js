@@ -7,7 +7,66 @@ const {
   requestOriginAllowed,
   sendJson,
   supabaseAuthRequest,
+  supabaseRest,
 } = require('./_lib');
+const crypto = require('node:crypto');
+
+const DEVELOPER_EMAIL = 'alabykhan@gmail.com';
+const SCHOOL_ADMIN_EMAIL = 'amb.adigun002@gmail.com';
+
+function inviteHash(value) {
+  return crypto.createHash('sha256').update(normalizeInvite(value)).digest('hex');
+}
+
+function fallbackProfile(user) {
+  const email = String(user?.email || '').trim().toLowerCase();
+  return {
+    id: user?.id,
+    email: user?.email || '',
+    display_name: email === DEVELOPER_EMAIL ? 'Portal Developer' : email === SCHOOL_ADMIN_EMAIL ? 'School Administrator' : 'School Staff',
+    role: email === DEVELOPER_EMAIL ? 'developer' : email === SCHOOL_ADMIN_EMAIL ? 'admin' : 'staff',
+    suspended: false,
+    is_developer: email === DEVELOPER_EMAIL,
+  };
+}
+
+async function enrichUser(user, accessToken) {
+  const fallback = fallbackProfile(user);
+  if (!user?.id || !accessToken) return { user, profile: fallback };
+  try {
+    const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(user.id)}&limit=1`, {}, accessToken);
+    if (rows?.[0]) {
+      if (rows[0].suspended) {
+        const error = new Error('This staff account has been suspended.');
+        error.status = 403;
+        error.payload = { code: 'STAFF_SUSPENDED', message: error.message };
+        throw error;
+      }
+      return { user, profile: rows[0] };
+    }
+    const profile = await supabaseRest('staff_profiles', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: fallback,
+    }, accessToken);
+    return { user, profile: profile?.[0] || fallback };
+  } catch (error) {
+    if (error?.payload?.code === 'STAFF_SUSPENDED') throw error;
+    return { user, profile: fallback };
+  }
+}
+
+async function inviteIsValid(value) {
+  try {
+    const rows = await supabaseRest('portal_access_config?id=eq.1&select=invite_enabled,invite_code_hash&limit=1');
+    const config = rows?.[0];
+    if (config) return config.invite_enabled === true && config.invite_code_hash === inviteHash(value);
+  } catch (error) {
+    // A new project may not have the access table yet; preserve the initial code
+    // until the First Choice bootstrap has been run.
+  }
+  return inviteHash(value) === inviteHash('AMBADIGUN');
+}
 
 function normalizeInvite(value) {
   return String(value || '').replace(/[\s,]+/g, '').toUpperCase();
@@ -19,6 +78,7 @@ function authError(res, error) {
   if (message.includes('invalid login credentials')) return sendJson(res, 401, { ok: false, code: 'INVALID_LOGIN_CREDENTIALS' });
   if (message.includes('email not confirmed')) return sendJson(res, 403, { ok: false, code: 'EMAIL_NOT_CONFIRMED' });
   if (message.includes('already registered') || message.includes('already been registered')) return sendJson(res, 409, { ok: false, code: 'EMAIL_ALREADY_REGISTERED' });
+  if (message.includes('suspended')) return sendJson(res, 403, { ok: false, code: 'STAFF_SUSPENDED', message: 'This staff account has been suspended.' });
   sendJson(res, error?.status || 400, { ok: false, code: 'AUTH_REQUEST_FAILED', message: payload.msg || payload.message || 'Authentication failed.' });
 }
 
@@ -30,7 +90,8 @@ module.exports = async function resultAuth(req, res) {
     if (!token) return sendJson(res, 200, { ok: true, auth_mode: 'local', configured: true });
     try {
       const user = await supabaseAuthRequest('user', undefined, token);
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', user });
+      const enriched = await enrichUser(user, token);
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', user, staff_profile: enriched.profile });
     } catch (error) {
       clearSessionCookie(res);
       return authError(res, error);
@@ -49,12 +110,14 @@ module.exports = async function resultAuth(req, res) {
   try {
     if (body.action === 'login') {
       const payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload, user: payload.user });
+      const enriched = await enrichUser(payload.user, payload.access_token);
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload, user: payload.user, staff_profile: enriched.profile });
     }
     if (body.action === 'register') {
-      if (normalizeInvite(body.invite_code) !== 'AMBADIGUN') return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
+      if (!(await inviteIsValid(body.invite_code))) return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
       const payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'first_choice_result' } });
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload.access_token ? payload : null, user: payload.user || null });
+      const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token) : { profile: fallbackProfile(payload.user) };
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload.access_token ? payload : null, user: payload.user || null, staff_profile: enriched.profile });
     }
     if (body.action === 'forgot_password') {
       await supabaseAuthRequest('recover', { email: body.email, redirect_to: `${req.headers.origin || ''}/portal_core.html` });

@@ -479,6 +479,7 @@ body.central-management-mode .central-management-only{display:flex}
 .staff-read-only #page-settings,.staff-read-only #ni-settings,.staff-read-only #bn-settings{display:none!important}
 .staff-read-only .edit-only,.staff-read-only #save-draft-btn,.staff-read-only #publish-btn,.staff-read-only #save-student-btn,.staff-read-only #save-profile-btn{display:none!important}
 .staff-access-note{padding:12px;border:1px solid #f0d58a;border-radius:10px;background:#fffaf0;color:#725500;font-size:.76rem;line-height:1.45}
+.staff-directory{display:grid;gap:10px}.staff-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fbfffd}.staff-row strong{display:block;color:var(--g1);font-size:.82rem}.staff-row small{display:block;color:var(--gray);font-size:.7rem;margin-top:3px}.staff-row-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.staff-status{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:.66rem;font-weight:800}.staff-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.staff-status.active{color:#087443;background:#e4f8ed}.staff-status.idle{color:#8a6500;background:#fff7d6}.staff-status.suspended{color:#a51d2d;background:#fee8eb}.staff-role{border:1px solid var(--border);border-radius:7px;padding:6px 8px;background:#fff;color:var(--g1);font-size:.72rem}.staff-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}@media(max-width:600px){.staff-row{grid-template-columns:1fr}.staff-actions{justify-content:flex-start}}
 .result-context-current{padding:15px;border:1px solid rgba(125,212,176,.5);border-radius:12px;background:#f0fdf4;text-align:center}
 .result-context-current span{display:block;color:var(--g3);font-size:.65rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .result-context-current strong{display:block;margin-top:6px;color:var(--g1);font-size:1rem}
@@ -1058,6 +1059,23 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="btn btn-outline btn-sm" type="button" onclick="renderStaffOverview()">Refresh overview</button>
         </div>
       </div>
+      <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
+        <div class="tbl-head"><h3>Staff access controls</h3><span id="staff-directory-status" style="font-size:.7rem;color:var(--gray)">Loading…</span></div>
+        <div style="padding:16px">
+          <div id="staff-directory" class="staff-directory"><div class="empty"><p>Staff activity will appear here after the First Choice database is connected.</p></div></div>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
+        <div class="tbl-head"><h3>Registration invite link</h3><span class="badge-access">Management only</span></div>
+        <div style="padding:16px">
+          <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:12px">Control whether new staff can register and change the invitation code used on the registration screen.</p>
+          <div class="settings-grid" style="gap:12px">
+            <div class="fg"><label for="invite-code-setting">Invite code</label><input class="inp" id="invite-code-setting" type="text" autocomplete="off" placeholder="Enter a new invite code"/></div>
+            <div class="fg"><label for="invite-enabled-setting">Registration access</label><select class="sel" id="invite-enabled-setting"><option value="true">Enabled</option><option value="false">Paused</option></select></div>
+          </div>
+          <div class="context-manager-row"><small id="invite-link-preview">Registration invite is managed by the school administrator.</small><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div>
+        </div>
+      </div>
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>Proprietor Signature</h3></div>
         <div style="padding:16px">
@@ -1455,6 +1473,7 @@ function authMessage(payload){
   if(code==='EMAIL_NOT_CONFIRMED')return 'Please confirm your email address before signing in.';
   if(code==='INVALID_LOGIN_CREDENTIALS')return 'The email or password is incorrect.';
   if(code==='EMAIL_ALREADY_REGISTERED')return 'An account with this email already exists. Sign in instead.';
+  if(code==='STAFF_SUSPENDED')return 'This staff account has been suspended. Contact school management.';
   if(code==='PASSWORD_RECOVERY_SENT')return 'If that email is registered, a password reset link has been sent.';
   return (payload&&payload.message)||'Authentication failed. Please try again.';
 }
@@ -1503,15 +1522,17 @@ function readOnlyOrAction(action,payload){
 
 function localUserFromPayload(payload){
   var resultUser=payload&&payload.user?payload.user:(payload&&payload.result_user?payload.result_user:{});
+  var profile=payload&&payload.staff_profile?payload.staff_profile:{};
   var email=String(resultUser.email||'').trim().toLowerCase();
   var developerEmail='alabykhan@gmail.com';
   var adminEmail=String((getCfg().school||DEFAULT_SCHOOL).email||DEFAULT_SCHOOL.email).trim().toLowerCase();
-  var role=email===developerEmail?'developer':email===adminEmail?'admin':'staff';
+  var role=profile.role|| (email===developerEmail?'developer':email===adminEmail?'admin':'staff');
+  if(profile.suspended)role='suspended';
   var permissions=role==='staff'?['results.view']:['results.manage','result_settings.manage','management.review','report_cards.generate','results.export'];
   return {
     id:resultUser.id,
     email:resultUser.email,
-    full_name:role==='developer'?'Portal Developer':role==='admin'?'School Administrator':(resultUser.user_metadata&&resultUser.user_metadata.full_name)||'School Staff',
+    full_name:profile.display_name||(role==='developer'?'Portal Developer':role==='admin'?'School Administrator':(resultUser.user_metadata&&resultUser.user_metadata.full_name)||'School Staff'),
     _role:role,
     _permissions:permissions,
     _centralManagementAllowed:false,
@@ -2861,7 +2882,56 @@ function renderStaffOverview(){
   var el=document.getElementById('staff-overview');if(!el)return;
   var role=CURRENT_USER&&CURRENT_USER._role||'staff';
   var label=role==='developer'?'Developer access':role==='admin'?'School administrator':'Staff access';
-  el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>'+(role==='staff'?'This account can enter classes and view result records only. Settings and management review are hidden.':'The management directory is ready for staff roles, active status and admin promotion. It will populate after the First Choice result database functions are connected.')+'</div>';
+  if(role==='staff'){
+    el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>This account can enter classes and view result records only. Settings and management review are hidden.</div>';
+    return;
+  }
+  el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Review staff activity, promote or remove administrators, and suspend access from the directory below. The developer account is protected and hidden.</div>';
+  loadStaffDirectory();
+  loadInviteSettings();
+}
+
+function staffStatusLabel(row){
+  if(row.suspended)return '<span class="staff-status suspended">Suspended</span>';
+  var seen=row.last_seen_at?new Date(row.last_seen_at).getTime():0;
+  var active=seen&&Date.now()-seen<15*60*1000;
+  return '<span class="staff-status '+(active?'active':'idle')+'">'+(active?'Active now':'Not recently active')+'</span>';
+}
+function staffSeenLabel(row){
+  if(!row.last_seen_at)return 'No sign-in recorded yet';
+  var date=new Date(row.last_seen_at);return 'Last activity: '+date.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'});
+}
+function loadStaffDirectory(){
+  var el=document.getElementById('staff-directory'),status=document.getElementById('staff-directory-status');if(!el)return;
+  if(!hasResultPermission('management.review')){el.innerHTML='';return;}
+  if(status)status.textContent='Loading…';
+  resultDataRequest('management.staff.list',{}).then(function(payload){
+    var rows=Array.isArray(payload.staff)?payload.staff:[];
+    if(status)status.textContent=rows.length+' staff account'+(rows.length===1?'':'s');
+    if(!rows.length){el.innerHTML='<div class="empty"><h3>No staff activity yet</h3><p>Registered First Choice staff will appear here after their first sign-in.</p></div>';return;}
+    el.innerHTML=rows.map(function(row){
+      var display=row.display_name||row.email||'First Choice staff';
+      var role=row.role==='admin'?'Admin':'Staff';
+      return '<div class="staff-row"><div><strong>'+escapeHtml(display)+'</strong><small>'+escapeHtml(row.email||'')+' · '+escapeHtml(staffSeenLabel(row))+'</small><div class="staff-row-meta">'+staffStatusLabel(row)+'<span class="staff-role">'+role+'</span></div></div><div class="staff-actions"><select class="staff-role" aria-label="Change staff role" onchange="updateStaffMember(\''+escapeHtml(row.id)+'\',this.value,'+Boolean(row.suspended)+')"><option value="staff" '+(row.role==='staff'?'selected':'')+'>Staff</option><option value="admin" '+(row.role==='admin'?'selected':'')+'>Admin</option></select><button class="btn btn-xs '+(row.suspended?'btn-outline':'btn-danger')+'" type="button" onclick="updateStaffMember(\''+escapeHtml(row.id)+'\',\''+row.role+'\','+(!row.suspended)+')">'+(row.suspended?'Restore access':'Suspend')+'</button></div></div>';
+    }).join('');
+  }).catch(function(error){
+    if(status)status.textContent='Unavailable';
+    el.innerHTML='<div class="staff-access-note">Staff directory is unavailable until the First Choice management tables are installed.</div>';
+  });
+}
+function updateStaffMember(id,role,suspended){
+  if(!hasResultPermission('management.review'))return;
+  resultDataRequest('management.staff.update',{id:id,role:role,suspended:Boolean(suspended)}).then(function(){showToast('Staff access updated.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Staff access could not be updated.','error');loadStaffDirectory();});
+}
+function loadInviteSettings(){
+  var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting'),preview=document.getElementById('invite-link-preview');
+  if(!code||!enabled)return;
+  resultDataRequest('management.invite.read',{}).then(function(payload){var invite=payload.invite||{};enabled.value=invite.invite_enabled===false?'false':'true';preview.textContent='Current invite: '+(invite.invite_hint||'Configured')+'. Leave the code blank to keep it unchanged.';}).catch(function(){preview.textContent='Invite settings will be available after the management tables are installed.';});
+}
+function saveInviteSettings(){
+  if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
+  var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting');
+  resultDataRequest('management.invite.update',{invite_code:code?code.value.trim():'',invite_enabled:enabled?enabled.value==='true':true}).then(function(payload){if(code)code.value='';var invite=payload.invite||{};var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Current invite: '+(invite.invite_hint||'Updated')+'. Leave the code blank to keep it unchanged.';showToast('Invite settings saved.');}).catch(function(error){showToast((error&&error.message)||'Invite settings could not be saved.','error');});
 }
 
 // ============================================================

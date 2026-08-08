@@ -6,12 +6,52 @@ const {
   readJsonBody,
   requestOriginAllowed,
   sendJson,
+  supabaseAuthRequest,
   supabaseRest,
 } = require('./_lib');
+const crypto = require('node:crypto');
 
 const READ_RESOURCES = new Set([
   'classes', 'subjects', 'students', 'scores', 'traits', 'remarks', 'fees', 'published_subjects',
 ]);
+const DEVELOPER_EMAIL = 'alabykhan@gmail.com';
+const SCHOOL_ADMIN_EMAIL = 'amb.adigun002@gmail.com';
+
+function inviteHash(value) {
+  return crypto.createHash('sha256').update(String(value || '').replace(/[\s,]+/g, '').toUpperCase()).digest('hex');
+}
+
+async function currentStaff(token) {
+  const user = await supabaseAuthRequest('user', undefined, token);
+  const email = String(user?.email || '').trim().toLowerCase();
+  const fallback = { id: user?.id, email: user?.email || '', role: email === DEVELOPER_EMAIL ? 'developer' : email === SCHOOL_ADMIN_EMAIL ? 'admin' : 'staff', suspended: false, is_developer: email === DEVELOPER_EMAIL };
+  try {
+    const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(user.id)}&limit=1`, {}, token);
+    return { user, profile: rows?.[0] || fallback };
+  } catch (error) {
+    return { user, profile: fallback };
+  }
+}
+
+async function requireManagement(token) {
+  const staff = await currentStaff(token);
+  if (staff.profile.suspended || !['developer', 'admin'].includes(staff.profile.role)) {
+    const error = new Error('Management access is required.');
+    error.status = 403;
+    error.payload = { code: 'RESULT_PERMISSION_DENIED', message: error.message };
+    throw error;
+  }
+  return staff;
+}
+
+async function touchStaff(token) {
+  try {
+    const staff = await currentStaff(token);
+    if (staff.user?.id) await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(staff.user.id)}`, { method: 'PATCH', body: { last_seen_at: new Date().toISOString() } }, token);
+  } catch (error) {
+    // Activity tracking must never prevent normal portal use.
+  }
+}
 
 function errorPayload(error) {
   const payload = error?.payload || {};
@@ -61,6 +101,37 @@ async function upsert(table, body, token) {
 }
 
 async function handleAction(action, payload, token) {
+  if (action === 'management.staff.list') {
+    await requireManagement(token);
+    const rows = await supabaseRest('staff_profiles?is_developer=eq.false&order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
+    return { ok: true, staff: rows || [] };
+  }
+  if (action === 'management.staff.update') {
+    const manager = await requireManagement(token);
+    if (!payload.id) throw Object.assign(new Error('Staff member is required.'), { payload: { code: 'RESULT_STAFF_REQUIRED' } });
+    if (String(payload.id) === String(manager.profile.id) && payload.suspended === true) throw Object.assign(new Error('You cannot suspend your own account.'), { payload: { code: 'RESULT_SELF_SUSPEND_DENIED' } });
+    const target = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}&limit=1`, {}, token);
+    if (target?.[0]?.is_developer) throw Object.assign(new Error('The developer account cannot be changed here.'), { payload: { code: 'RESULT_DEVELOPER_PROTECTED' } });
+    const update = {};
+    if (['staff', 'admin'].includes(payload.role)) update.role = payload.role;
+    if (typeof payload.suspended === 'boolean') update.suspended = payload.suspended;
+    const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}`, { method: 'PATCH', body: update }, token);
+    return { ok: true, staff: rows?.[0] || null };
+  }
+  if (action === 'management.invite.read') {
+    await requireManagement(token);
+    const rows = await supabaseRest('portal_access_config?id=eq.1&select=id,invite_enabled,invite_hint,updated_at&limit=1', {}, token);
+    return { ok: true, invite: rows?.[0] || { id: 1, invite_enabled: true, invite_hint: 'AMB••••••' } };
+  }
+  if (action === 'management.invite.update') {
+    await requireManagement(token);
+    const code = String(payload.invite_code || '').replace(/[\s,]+/g, '').toUpperCase();
+    if (code && code.length < 6) throw Object.assign(new Error('Invite code must contain at least 6 characters.'), { payload: { code: 'RESULT_INVITE_INVALID' } });
+    const update = { id: 1, invite_enabled: payload.invite_enabled !== false };
+    if (code) { update.invite_code_hash = inviteHash(code); update.invite_hint = `${code.slice(0, 3)}••••${code.slice(-2)}`; }
+    const row = await upsert('portal_access_config', update, token);
+    return { ok: true, invite: row };
+  }
   if (action.startsWith('read.')) {
     return { ok: true, rows: await readResource(action.slice(5), payload, token) };
   }
@@ -142,6 +213,7 @@ module.exports = async function resultData(req, res) {
     return;
   }
   try {
+    await touchStaff(accessToken);
     const payload = await handleAction(body.action.trim(), body.payload || {}, accessToken);
     sendJson(res, 200, payload);
   } catch (error) {
