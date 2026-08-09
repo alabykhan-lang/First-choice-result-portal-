@@ -220,9 +220,9 @@ async function handleAction(action, payload, token) {
         prefer: 'return=representation',
         body: scoreBody,
       }, token);
-      return { ok: true, score: rows?.[0] || existing[0] };
+      return { ok: true, persisted: true, score: rows?.[0] || existing[0] };
     }
-    return { ok: true, score: await upsert('scores', scoreBody, token) };
+    return { ok: true, persisted: true, score: await upsert('scores', scoreBody, token) };
   }
   if (action === 'traits.enter') {
     return { ok: true, trait: await upsert('traits', payload, token) };

@@ -4379,8 +4379,9 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Lowest avg: <strong>'+lowestAvg+'</strong></td>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Highest avg: <strong>'+highestAvg+'</strong></td>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Overall performance: <strong style="color:'+gc(avg)+'">'+overallPerf+'</strong></td>'
-      +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Days school ended: --</td>'
+      +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Term: <strong>'+term+'</strong></td>'
       +'</tr>'
+      +(sec.showAttendance!==false?'<tr><td colspan="4" style="padding:4px 8px;border:1px solid '+BORDER+';background:'+MINT+'">Attendance: <strong>Days school opened:</strong> '+(att.opened||'--')+' &nbsp; <strong>Present:</strong> '+(att.present||'--')+' &nbsp; <strong>Absent:</strong> '+(att.absent||'--')+'</td></tr>':'')
       +'</table>';
   }
 
@@ -4437,11 +4438,11 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
     h+='</tr></table>';
   }
 
-  // CONFIGURED FEES AND PAYMENTS
+  // NEXT TERM FEE SCHEDULE — planned charges, not current outstanding balances
   if(sec.showFees&&configuredFees.length){
-    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Configured Fees &amp; Payments</div>'
+    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Next Term Fee Schedule</div>'
       +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
-      +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">AMOUNT DUE</th></tr></thead><tbody>'
+      +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">NEXT TERM AMOUNT</th></tr></thead><tbody>'
       +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;var amount=Number(feeMatrix[feeCategory][label]||0);return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(amount?'N'+amount.toLocaleString():'--')+'</td></tr>';}).join('')
       +'</tbody></table>';
   }
@@ -4455,15 +4456,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'</tr></table>';
   }
 
-  // ATTENDANCE + REMARK
-  if(sec.showAttendance!==false){
-    h+='<div style="display:flex;border-top:1px solid '+BORDER+';border-bottom:1px solid '+BORDER+';font-size:8.5pt">'
-      +'<div style="flex:1;padding:5px 10px;border-right:1px solid '+BORDER+'">Days opened: <strong>'+(att.opened||'--')+'</strong></div>'
-      +'<div style="flex:1;padding:5px 10px;border-right:1px solid '+BORDER+'">Days present: <strong>'+(att.present||'--')+'</strong></div>'
-      +'<div style="flex:1;padding:5px 10px;border-right:1px solid '+BORDER+'">Days absent: <strong>'+(att.absent||'--')+'</strong></div>'
-      +'<div style="flex:1;padding:5px 10px">Subjects passed: <strong>'+(pass!==''?pass+'/'+cnt:'--')+'</strong></div>'
-      +'</div>';
-  }
+  // GENERAL REMARK
   h+='<div style="padding:6px 12px;border-bottom:1px solid '+BORDER+';display:flex;align-items:center;gap:8px;font-size:8.5pt">'
     +'<strong style="color:'+NAVY+';white-space:nowrap">GENERAL REMARK</strong>'
     +'<div style="flex:1;border-bottom:1.5px solid #aaa;padding-bottom:2px;color:'+TEAL+';font-weight:600">'+getAutoRemark(avg)+'</div>'
