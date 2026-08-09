@@ -294,6 +294,23 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .theme-swatch{width:34px;height:34px;border-radius:8px;cursor:pointer;
   border:3px solid transparent;transition:.15s;flex-shrink:0}
 .theme-swatch.selected{border-color:#fff;box-shadow:0 0 0 2px var(--g1)}
+.template-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.template-option{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px;text-align:left;cursor:pointer;transition:.18s;min-width:0}
+.template-option:hover{border-color:var(--g3);transform:translateY(-1px);box-shadow:0 6px 16px rgba(7,91,56,.12)}
+.template-option.selected{border:2px solid var(--g1);padding:9px;box-shadow:0 7px 18px rgba(7,91,56,.15)}
+.template-preview{height:92px;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:5px;overflow:hidden;position:relative}
+.template-preview::after{content:'REPORT CARD';position:absolute;right:7px;top:8px;font-size:.48rem;font-weight:900;letter-spacing:.06em;opacity:.8}
+.template-preview-modern{background:linear-gradient(135deg,#0b2b54 0 27%,#fff 27%);border:1px solid #d4ddea}
+.template-preview-modern::after{color:#0b2b54}
+.template-preview-creative{background:linear-gradient(135deg,#0b6b58 0 24%,#fffaf0 24%);border:1px solid #f2c15b}
+.template-preview-creative::after{color:#0b6b58}
+.template-preview-premium{background:linear-gradient(90deg,#fbf6ea 0 75%,#0b3a2e 75%);border:1px solid #c8b27b}
+.template-preview-premium::after{color:#e2bf71}
+.template-preview-bar{width:55%;height:8px;border-radius:3px;background:#fff;opacity:.95;margin-top:18px}
+.template-preview-line{height:5px;border-radius:3px;background:currentColor;opacity:.22;width:86%}
+.template-option strong{display:block;color:var(--g1);font-size:.78rem;margin-top:8px}
+.template-option small{display:block;color:var(--gray);font-size:.68rem;line-height:1.35;margin-top:3px}
+@media(max-width:700px){.template-picker{grid-template-columns:1fr}}
 .subj-tag{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;
   border:1px solid var(--g3);color:var(--g1);padding:4px 10px;border-radius:20px;
   font-size:.78rem;font-weight:500}
@@ -1132,8 +1149,8 @@ body.result-context-read-only .results-history-readable{display:flex}
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>Report Card Templates</h3></div>
         <div style="padding:16px">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" id="theme-picker"></div>
-          <p style="font-size:.78rem;color:var(--gray)">Choose a report-card visual template. Selected: <strong id="theme-name">Forest Green</strong></p>
+          <div class="template-picker" id="theme-picker"></div>
+          <p style="font-size:.78rem;color:var(--gray);margin-top:10px">Choose the report-card layout management prefers. All templates use the same live school data, scores, assessment settings, attendance, traits, fees schedule, remarks and signature. Selected: <strong id="theme-name">Alternative 1 · Modern &amp; Clean</strong></p>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
@@ -2429,12 +2446,9 @@ var GRADE_SCALE=[
   {min:0, max:39, g:'F9',r:'Fail',      c:'#991b1b',bg:'#fee2e2'}
 ];
 var CARD_THEMES=[
-  {id:'forest',  name:'Forest Green',  primary:'#0a3d2e',accent:'#c9922a',accent2:'#e8b547'},
-  {id:'navy',    name:'Navy & Gold',   primary:'#1e3a5f',accent:'#d4a017',accent2:'#f0c040'},
-  {id:'maroon',  name:'Maroon & Gold', primary:'#6b1f1f',accent:'#c9922a',accent2:'#e8b547'},
-  {id:'purple',  name:'Royal Purple',  primary:'#3d1a6e',accent:'#9b59b6',accent2:'#d7bde2'},
-  {id:'teal',    name:'Teal & Amber',  primary:'#0d6b6b',accent:'#e67e22',accent2:'#f39c12'},
-  {id:'charcoal',name:'Charcoal',      primary:'#2c3e50',accent:'#95a5a6',accent2:'#bdc3c7'}
+  {id:'modern',name:'Alternative 1 · Modern & Clean',description:'Structured navy, white and gold layout.',primary:'#0b2b54',accent:'#dcae2b',accent2:'#f4d477',soft:'#f5f8fc',border:'#ccd7e6',text:'#102d50',layout:'modern'},
+  {id:'creative',name:'Alternative 2 · Creative & Colorful',description:'Bright green, amber and rounded visual blocks.',primary:'#0b6b58',accent:'#f59e0b',accent2:'#f97316',soft:'#fffaf0',border:'#e6d4a8',text:'#075744',layout:'creative'},
+  {id:'premium',name:'Alternative 3 · Elegant & Premium',description:'Cream, deep green and restrained gold detailing.',primary:'#0b3a2e',accent:'#b18a3a',accent2:'#e2bf71',soft:'#fbf6ea',border:'#d4c39b',text:'#254437',layout:'premium'}
 ];
 var CARD_SECTIONS=[
   {key:'showHeader',   label:'School Header & Logo'},
@@ -2482,7 +2496,9 @@ function getSections(){
 }
 function getTheme(){
   var cfg=getCfg();
-  var id=cfg.cardTheme||'forest';
+  var id=cfg.cardTheme||'modern';
+  var legacy={forest:'modern',navy:'modern',maroon:'premium',purple:'creative',teal:'creative',charcoal:'premium'};
+  id=legacy[id]||id;
   for(var i=0;i<CARD_THEMES.length;i++)if(CARD_THEMES[i].id===id)return CARD_THEMES[i];
   return CARD_THEMES[0];
 }
@@ -4357,42 +4373,57 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var overallPerf=avg!==''?getGrade(avg).r:'--';
   var att={opened:rem.days_opened||'',present:rem.days_present||'',absent:Number(rem.days_opened||0)-Number(rem.days_present||0)||''};
 
-  // Card colours - navy/mint school uniform
-  var NAVY='#1a2a4a',MINT='#edf8f4',TEAL='#7dd4b0',BORDER='#b8edd8',WHITE='#ffffff';
+  // The selected template changes presentation only; all values above remain
+  // driven by the live portal data and management settings.
+  var theme=getTheme();
+  var NAVY=theme.primary,MINT=theme.soft,TEAL=theme.accent,BORDER=theme.border,WHITE='#ffffff';
+  var isCreative=theme.layout==='creative',isPremium=theme.layout==='premium';
   var P='-webkit-print-color-adjust:exact;print-color-adjust:exact';
 
   var sigHTML=sig.image?('<img src="'+sig.image+'" style="height:38px;max-width:130px;object-fit:contain"/>')
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
-  var h='<div class="report-card" style="background:'+WHITE+';max-width:800px;font-family:Segoe UI,Tahoma,sans-serif;font-size:9pt;border-top:7px solid '+NAVY+';'+P+'">';
+  var h='<div class="report-card report-template-'+theme.layout+'" style="background:'+WHITE+';max-width:800px;font-family:'+(isPremium?'Georgia,Times New Roman,serif':'Segoe UI,Tahoma,sans-serif')+';font-size:9pt;border:'+(isPremium?'2px solid '+BORDER:'1px solid '+BORDER)+';border-top:7px solid '+NAVY+';'+(isPremium?'box-shadow:0 2px 14px rgba(79,55,18,.12);':'')+P+'">';
 
   // HEADER
   if(sec.showHeader){
-    h+='<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:2px solid '+TEAL+';background:'+NAVY+';'+P+'">'
-      +(window.SCHOOL_LOGO
-        ?'<div style="flex-shrink:0;'+P+'"><img src="'+window.SCHOOL_LOGO+'" style="width:70px;height:70px;object-fit:contain;border-radius:8px;background:#fff;padding:3px"/></div>'
-        :'<div style="background:'+TEAL+';border-radius:8px;padding:7px 10px;flex-shrink:0;'+P+'"><div style="font-weight:900;font-size:20pt;line-height:1;color:'+WHITE+'">FCSS</div></div>')
-      +'<div style="flex:1">'
-      +'<div style="color:'+TEAL+';font-size:15pt;font-weight:900;text-transform:uppercase">'+school.name+'</div>'
-      +'<div style="color:rgba(255,255,255,.75);font-size:8pt;margin-top:2px">'+school.addr+'</div>'
-      +'<div style="color:rgba(255,255,255,.65);font-size:8pt">Phone: '+school.phone+' | Email: '+school.email+'</div>'
-      +'</div>'
-      +(sec.showPhoto&&s.photo?'<img src="'+s.photo+'" style="width:65px;height:78px;object-fit:cover;border-radius:4px;border:2px solid '+TEAL+';flex-shrink:0"/>':'')
-      +'</div>';
+    var logo=window.SCHOOL_LOGO
+      ?'<img src="'+window.SCHOOL_LOGO+'" style="width:'+(isCreative?'78px':'68px')+';height:'+(isCreative?'78px':'68px')+';object-fit:contain;border-radius:8px;background:#fff;padding:3px;'+P+'"/>'
+      :'<div style="font-weight:900;font-size:20pt;line-height:1;color:'+WHITE+'">FCSS</div>';
+    if(isCreative){
+      h+='<div style="position:relative;text-align:center;padding:13px 18px 11px;border-bottom:3px solid '+TEAL+';background:linear-gradient(135deg,'+NAVY+' 0%,'+theme.text+' 58%,'+TEAL+' 100%);color:'+WHITE+';'+P+'">'
+        +'<div style="position:absolute;left:14px;top:9px;color:'+theme.accent2+';font-size:15pt">✦</div><div style="position:absolute;right:18px;bottom:9px;color:'+theme.accent+';font-size:15pt">✧</div>'
+        +logo+'<div style="color:'+WHITE+';font-size:15pt;font-weight:900;text-transform:uppercase;margin-top:3px">'+school.name+'</div>'
+        +'<div style="color:'+theme.accent2+';font-size:10pt;font-style:italic;font-weight:700;margin-top:2px">Building a Better Future</div>'
+        +'<div style="color:rgba(255,255,255,.84);font-size:8pt;margin-top:4px">'+school.addr+' &nbsp; · &nbsp; '+school.phone+' &nbsp; · &nbsp; '+school.email+'</div>'
+        +'<div style="display:inline-block;background:'+theme.accent+';color:#3b2700;border-radius:9px;padding:7px 20px;margin-top:8px;font-size:16pt;font-weight:900;letter-spacing:.03em">REPORT CARD</div>'
+        +'</div>';
+    }else if(isPremium){
+      h+='<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:2px solid '+TEAL+';background:'+MINT+';'+P+'">'
+        +'<div style="flex-shrink:0">'+logo+'</div><div style="flex:1;text-align:center">'
+        +'<div style="color:'+NAVY+';font-size:15pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em">'+school.name+'</div>'
+        +'<div style="color:'+theme.text+';font-size:9pt;font-style:italic;margin-top:3px">Building a Better Future</div>'
+        +'<div style="color:'+theme.text+';font-size:7.5pt;margin-top:5px">'+school.addr+' &nbsp; · &nbsp; '+school.phone+' &nbsp; · &nbsp; '+school.email+'</div>'
+        +'</div><div style="background:'+NAVY+';color:'+theme.accent2+';padding:12px 10px;border-radius:4px;text-align:center;font-size:13pt;font-weight:700;min-width:92px">REPORT<br/>CARD</div>'
+        +'</div>';
+    }else{
+      h+='<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:2px solid '+TEAL+';background:'+NAVY+';'+P+'">'
+        +'<div style="flex-shrink:0">'+logo+'</div><div style="flex:1">'
+        +'<div style="color:'+theme.accent2+';font-size:15pt;font-weight:900;text-transform:uppercase">'+school.name+'</div>'
+        +'<div style="color:rgba(255,255,255,.78);font-size:8pt;margin-top:2px">'+school.addr+'</div>'
+        +'<div style="color:rgba(255,255,255,.68);font-size:8pt">Phone: '+school.phone+' | Email: '+school.email+'</div>'
+        +'</div><div style="background:'+TEAL+';color:'+NAVY+';padding:8px 12px;font-size:12pt;font-weight:900;white-space:nowrap">REPORT CARD</div>'
+        +'</div>';
+    }
   }
 
   // BIO
   if(sec.showBio){
-    h+='<table style="width:100%;border-collapse:collapse;border-bottom:2px solid '+NAVY+'">'
+    h+='<table style="width:100%;border-collapse:collapse;border-bottom:2px solid '+NAVY+';background:'+MINT+'">'
       +'<tr>'
-      +'<td rowspan="2" style="background:'+NAVY+';color:'+WHITE+';padding:7px 10px;width:92px;vertical-align:top;border-right:2px solid '+TEAL+';'+P+'">'
-      +'<div style="font-size:7.5pt;font-weight:700">REG. NO:</div>'
-      +'<div style="font-size:9pt;font-weight:700;border-bottom:1px solid rgba(255,255,255,.25);padding-bottom:4px;margin-bottom:4px">'+(s.admno||'--')+'</div>'
-      +'<div style="font-size:7.5pt;font-weight:700">SESSION:</div>'
-      +'<div style="font-size:9pt;font-weight:700">'+session+'</div>'
-      +'</td>'
-      +'<td colspan="2" style="padding:7px 12px;background:'+MINT+';'+P+'">'
+      +(sec.showPhoto&&s.photo?'<td style="padding:7px 10px;width:88px;text-align:center;border-right:1px solid '+BORDER+'"><img src="'+s.photo+'" style="width:62px;height:72px;object-fit:cover;border-radius:'+(isPremium?'4px':'50%')+';border:2px solid '+TEAL+';background:#fff"/></td>':'')
+      +'<td style="padding:7px 12px;'+(sec.showPhoto&&s.photo?'':'padding-left:16px;')+P+'">'
       +'<div style="font-size:10pt;font-weight:700;color:'+NAVY+'">NAME OF STUDENT: <span style="font-size:11pt;text-transform:uppercase">'+s.name+'</span></div>'
       +'<div style="margin-top:4px;display:flex;gap:20px;font-size:9pt">'
       +'<span><strong>GENDER:</strong> '+s.gender+'</span>'
@@ -4400,14 +4431,14 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<span><strong>AGE:</strong> '+(s.age||'--')+'</span>'
       +'</div>'
       +'</td>'
-      +'<td style="padding:7px 12px;background:'+MINT+';text-align:right;'+P+'"><div style="font-size:9pt;font-weight:700;color:'+NAVY+'">TERM: '+term+'</div></td>'
+      +'<td style="padding:7px 12px;text-align:right;border-left:1px solid '+BORDER+';'+P+'"><div style="font-size:7.5pt;font-weight:700;color:'+NAVY+'">REG. NO:</div><div style="font-size:9pt;font-weight:700">'+(s.admno||'--')+'</div><div style="font-size:7.5pt;font-weight:700;color:'+NAVY+';margin-top:3px">SESSION:</div><div style="font-size:9pt;font-weight:700">'+session+'</div><div style="display:inline-block;background:'+NAVY+';color:'+theme.accent2+';padding:3px 7px;margin-top:3px;border-radius:4px;font-size:7.5pt;font-weight:700">TERM: '+term+'</div></td>'
       +'</tr>'
       +'</table>';
   }
 
   // SUMMARY
   if(sec.showSummary){
-    h+='<table style="width:100%;border-collapse:collapse;border-bottom:1px solid '+BORDER+';font-size:8pt">'
+    h+='<table style="width:100%;border-collapse:collapse;border-bottom:1px solid '+BORDER+';font-size:8pt;background:'+(isPremium?MINT:isCreative?'#fffdf5':WHITE)+';'+P+'">'
       +'<tr>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">No. of students: <strong>'+n+'</strong></td>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Student avg: <strong>'+(avg!==''?avg:'--')+'</strong></td>'
@@ -4426,7 +4457,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
 
   // SUBJECTS
   if(sec.showSubjects){
-    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Academic Subject Results</div>'
+    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:6px 5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;letter-spacing:'+(isPremium?'.08em':'.02em')+';'+P+'">Academic Subject Results</div>'
       +'<table style="width:100%;border-collapse:collapse;font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'">'
       +'<th style="padding:5px 6px;text-align:left;border:1px solid '+BORDER+'">SUBJECT</th>'
@@ -4457,7 +4488,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
 
   // PERSONAL DEVELOPMENT
   if(sec.showAffective||sec.showPsycho){
-    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Personal Development Assessment</div>'
+    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:6px 5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;letter-spacing:'+(isPremium?'.08em':'.02em')+';'+P+'">Personal Development Assessment</div>'
       +'<table style="width:100%;border-collapse:collapse"><tr>';
     if(sec.showAffective){
       h+='<td style="width:50%;vertical-align:top;border-right:2px solid '+BORDER+';padding:0">'
@@ -4815,20 +4846,22 @@ function handleSigUpload(e){
 function clearSig(){var cfg=getCfg();cfg.signature={};saveCfg(cfg);document.getElementById('cfg-sig-name').value='';previewSig();}
 function updateRemark(i,field,val){var cfg=getCfg();var r=cfg.remarks||DEFAULT_REMARKS.slice();if(!r[i])return;r[i][field]=field==='text'?val:Number(val);cfg.remarks=r;saveCfg(cfg);}
 function renderThemePicker(){
-  var cfg=getCfg();var cur=cfg.cardTheme||'forest';
+  var cfg=getCfg();var cur=getTheme().id;
   var el=document.getElementById('theme-picker');if(!el)return;
   el.innerHTML=CARD_THEMES.map(function(t){
-    return'<div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" id="tp-wrap-'+t.id+'">'
-      +'<div class="theme-swatch'+(t.id===cur?' selected':'')+'" style="background:'+t.primary+'" id="tp-'+t.id+'"></div>'
-      +'<span style="font-size:.6rem;color:#555;text-align:center">'+t.name+'</span>'
-      +'</div>';
+    return'<button type="button" class="template-option'+(t.id===cur?' selected':'')+'" id="tp-wrap-'+t.id+'">'
+      +'<div class="template-preview template-preview-'+t.layout+'" style="color:'+t.primary+'">'
+      +'<div class="template-preview-bar" style="background:'+t.accent+'"></div>'
+      +'<div class="template-preview-line"></div><div class="template-preview-line" style="width:68%"></div>'
+      +'</div><strong>'+t.name+'</strong><small>'+t.description+'</small></button>';
   }).join('');
   CARD_THEMES.forEach(function(t){
     var wrap=document.getElementById('tp-wrap-'+t.id);
     if(wrap)wrap.onclick=function(){
       var cfg2=getCfg();cfg2.cardTheme=t.id;saveCfg(cfg2);
       document.getElementById('theme-name').textContent=t.name;
-      CARD_THEMES.forEach(function(tt){var sw=document.getElementById('tp-'+tt.id);if(sw)sw.className='theme-swatch'+(tt.id===t.id?' selected':'');});
+      CARD_THEMES.forEach(function(tt){var sw=document.getElementById('tp-wrap-'+tt.id);if(sw)sw.className='template-option'+(tt.id===t.id?' selected':'');});
+      if(IN_CLASS&&activePageId()==='card')renderCard();
     };
   });
   var nm=document.getElementById('theme-name');
