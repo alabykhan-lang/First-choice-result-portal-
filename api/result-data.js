@@ -104,7 +104,15 @@ async function readSettings(token) {
 }
 
 async function upsert(table, body, token) {
-  const rows = await supabaseRest(table, {
+  const conflictKeys = {
+    scores: 'student_id,subject_index,term,academic_session',
+    traits: 'student_id,trait_type,trait_name,term,academic_session',
+    remarks: 'student_id,term,academic_session',
+    fees: 'student_id,term,academic_session',
+    published_subjects: 'class_key,subject_index,term,academic_session',
+  };
+  const conflict = conflictKeys[table] ? `?on_conflict=${encodeURIComponent(conflictKeys[table])}` : '';
+  const rows = await supabaseRest(`${table}${conflict}`, {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=representation',
     body,

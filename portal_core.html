@@ -1129,10 +1129,10 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div style="padding:16px" id="card-toggles"></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
-        <div class="tbl-head"><h3>Card Colour Theme</h3></div>
+        <div class="tbl-head"><h3>Report Card Templates</h3></div>
         <div style="padding:16px">
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" id="theme-picker"></div>
-          <p style="font-size:.78rem;color:var(--gray)">Selected: <strong id="theme-name">Forest Green</strong></p>
+          <p style="font-size:.78rem;color:var(--gray)">Choose a report-card visual template. Selected: <strong id="theme-name">Forest Green</strong></p>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
@@ -2421,7 +2421,7 @@ var CARD_SECTIONS=[
   {key:'showSubjects', label:'Subject Scores Table'},
   {key:'showAffective',label:'Affective Traits'},
   {key:'showPsycho',   label:'Psychomotor Skills'},
-  {key:'showFees',     label:'School Fees Status'},
+  {key:'showFees',     label:'Configured Fee Items & Payments'},
   {key:'showNextTerm', label:'Next Term Begins'},
   {key:'showAttendance',label:'Time School Opened / Attendance'},
   {key:'showSignature',label:'Proprietor Signature'}
@@ -3369,7 +3369,7 @@ function loadDemoData(){
   if(!confirm('Load demo pupils, pictures, scores and fees across the school?'))return;
   var assessment=getAssessmentConfig(),session=getActiveSession(),term=TERM,studentsToSeed=[];ALL_CLASSES.forEach(function(classKey,classIndex){for(var i=1;i<=2;i++){studentsToSeed.push({classKey:classKey,classIndex:classIndex,number:i,name:'Demo Pupil - '+DEPTS[classKey].label+' '+i,gender:i%2?'Male':'Female',admno:'',house:null,age:String(5+(classIndex%10)),photo:demoAvatar('Demo Pupil '+i,classIndex+i)});}});
   showLoad('Creating '+studentsToSeed.length+' demo pupils...');
-  Promise.all(studentsToSeed.map(function(item){var payload={class_key:dbClassKey(item.classKey),academic_session:session,name:item.name,gender:item.gender,admno:'DEMO-'+String(item.classIndex+1).padStart(2,'0')+String(item.number).padStart(2,'0'),house:null,age:item.age,photo:item.photo};return resultDataRequest('students.upsert',payload).then(function(response){var student=response.student||Object.assign({id:'demo-'+item.classKey+'-'+item.number},payload);DB_STUDENTS[item.classKey]=DB_STUDENTS[item.classKey]||[];DB_STUDENTS[item.classKey].push(student);return{item:item,student:student};});})).then(function(created){showLoad('Adding demo scores and fees...');var jobs=[];created.forEach(function(entry){var student=entry.student,key=entry.item.classKey;var subjectCount=Math.min(5,DEPTS[key].subjects.length);for(var si=0;si<subjectCount;si++){var ca1=Math.min(assessment.caMarks[0],10+(entry.item.number*2)+(si%3));var ca2=assessment.caCount>=2?Math.min(assessment.caMarks[1],11+(si%4)):null;var ca3=assessment.caCount>=3?Math.min(assessment.caMarks[2],7+(si%3)):null;var exam=Math.min(assessment.examMark,48+(si*3)+(entry.item.number*2));jobs.push(resultDataRequest('scores.enter',{student_id:student.id,class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,ca1:ca1,ca2:ca2,ca3:ca3,exam:exam}).then(function(res){var row=res.score||res.row;if(row){DB_SCORES[row.student_id]=DB_SCORES[row.student_id]||{};DB_SCORES[row.student_id][row.subject_index]={ca1:scoreCellValue(row.ca1),ca2:scoreCellValue(row.ca2),ca3:scoreCellValue(row.ca3),exam:scoreCellValue(row.exam)};}}));}var total=100+(entry.item.classIndex%5)*25,paid=entry.item.number===1?total:Math.round(total*.65);jobs.push(resultDataRequest('fees.update',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,total:total,paid:paid,debt:total-paid}).then(function(res){DB_FEES[student.id]=res.fee||{total:total,paid:paid,debt:total-paid};}));});return Promise.all(jobs);}).then(function(){hideLoad();var status=document.getElementById('demo-data-status');if(status)status.textContent='Demo data loaded: '+studentsToSeed.length+' pupils across '+ALL_CLASSES.length+' class groups, with profile pictures, scores and fees.';showToast('Demo data loaded successfully.');renderHome();renderStudents();renderDash();}).catch(function(error){hideLoad();console.error('Demo seed error:',error);showToast('Demo data could not be completed: '+(error.message||error.code||'database error'),'error');});
+  Promise.all(studentsToSeed.map(function(item){var payload={class_key:dbClassKey(item.classKey),academic_session:session,name:item.name,gender:item.gender,admno:'DEMO-'+String(item.classIndex+1).padStart(2,'0')+String(item.number).padStart(2,'0'),house:null,age:item.age,photo:item.photo};return resultDataRequest('students.upsert',payload).then(function(response){var student=response.student||Object.assign({id:'demo-'+item.classKey+'-'+item.number},payload);DB_STUDENTS[item.classKey]=DB_STUDENTS[item.classKey]||[];DB_STUDENTS[item.classKey].push(student);return{item:item,student:student};});})).then(function(created){showLoad('Adding demo scores, traits, fees and remarks...');var jobs=[];created.forEach(function(entry){var student=entry.student,key=entry.item.classKey;var subjectCount=Math.min(5,DEPTS[key].subjects.length);for(var si=0;si<subjectCount;si++){var ca1=Math.min(assessment.caMarks[0],10+(entry.item.number*2)+(si%3));var ca2=assessment.caCount>=2?Math.min(assessment.caMarks[1],11+(si%4)):null;var ca3=assessment.caCount>=3?Math.min(assessment.caMarks[2],7+(si%3)):null;var exam=Math.min(assessment.examMark,48+(si*3)+(entry.item.number*2));jobs.push(resultDataRequest('scores.enter',{student_id:student.id,class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,ca1:ca1,ca2:ca2,ca3:ca3,exam:exam}).then(function(res){var row=res.score||res.row;if(row){DB_SCORES[row.student_id]=DB_SCORES[row.student_id]||{};DB_SCORES[row.student_id][row.subject_index]={ca1:scoreCellValue(row.ca1),ca2:scoreCellValue(row.ca2),ca3:scoreCellValue(row.ca3),exam:scoreCellValue(row.exam)};}}));jobs.push(resultDataRequest('results.publish',{class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,published:true}));}var total=100+(entry.item.classIndex%5)*25,paid=entry.item.number===1?total:Math.round(total*.65);jobs.push(resultDataRequest('fees.update',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,total:total,paid:paid,debt:total-paid}).then(function(res){DB_FEES[student.id]=res.fee||{total:total,paid:paid,debt:total-paid};}));AFF6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'affective',trait_name:tr,rating:String(3+(entry.item.number+i)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].affective[tr]=String(3+(entry.item.number+i)%3);}));});PSY6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'psychomotor',trait_name:tr,rating:String(3+(entry.item.number+i+1)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].psychomotor[tr]=String(3+(entry.item.number+i+1)%3);}));});jobs.push(resultDataRequest('remarks.enter',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,academic:entry.item.number===1?'Excellent performance.':'Good progress this term.',form_master:'Keep working hard.',principal:'Approved'}).then(function(res){DB_REMARKS[student.id]=res.remark||{};}));});return Promise.all(jobs);}).then(function(){hideLoad();var status=document.getElementById('demo-data-status');if(status)status.textContent='Demo data loaded: '+studentsToSeed.length+' pupils across '+ALL_CLASSES.length+' class groups, with pictures, published scores, traits, psychomotor ratings, fees and remarks.';showToast('Complete demo data loaded successfully.');renderHome();renderStudents();renderDash();}).catch(function(error){hideLoad();console.error('Demo seed error:',error);showToast('Demo data could not be completed: '+(error.message||error.code||'database error'),'error');});
 }
 function clearDemoData(){
   if(!isCentralAuth()||!hasResultPermission('result_settings.manage')){showToast('Management access is required to clear demo data.','error');return;}
@@ -3742,7 +3742,7 @@ function renderProfile(s){
       // Update stars in same container
       var container=sp.parentNode;
       container.querySelectorAll('.star').forEach(function(s,i){s.classList.toggle('on',i<n);});
-      dbUpsertConflict('traits','student_id,trait_type,trait_name,term',
+    dbUpsertConflict('traits','student_id,trait_type,trait_name,term,academic_session',
         {student_id:fsid,class_key:dbClassKey(CLS),term:TERM,trait_type:key,trait_name:tr,rating:n})
         .catch(function(){showToast('Rating save failed','error');});
     };
@@ -3794,19 +3794,19 @@ function saveProfile(){
   var traits=DB_TRAITS[sid]||{affective:{},psychomotor:{}};
   var traitCalls=[];
   Object.keys(traits.affective||{}).forEach(function(tr){
-    traitCalls.push(dbUpsertConflict('traits','student_id,trait_type,trait_name,term',
+    traitCalls.push(dbUpsertConflict('traits','student_id,trait_type,trait_name,term,academic_session',
       {student_id:sid,class_key:dbClassKey(CLS),term:TERM,trait_type:'affective',trait_name:tr,rating:traits.affective[tr]}));
   });
   Object.keys(traits.psychomotor||{}).forEach(function(tr){
-    traitCalls.push(dbUpsertConflict('traits','student_id,trait_type,trait_name,term',
+    traitCalls.push(dbUpsertConflict('traits','student_id,trait_type,trait_name,term,academic_session',
       {student_id:sid,class_key:dbClassKey(CLS),term:TERM,trait_type:'psychomotor',trait_name:tr,rating:traits.psychomotor[tr]}));
   });
   Promise.all([
-    dbUpsertConflict('fees','student_id,term',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
+    dbUpsertConflict('fees','student_id,term,academic_session',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
       total:Number(document.getElementById('pf-fee-total').value||0),
       paid:Number(document.getElementById('pf-fee-paid').value||0),
       debt:Number(document.getElementById('pf-fee-debt').value||0)}),
-    dbUpsertConflict('remarks','student_id,term',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
+    dbUpsertConflict('remarks','student_id,term,academic_session',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
       academic:'',form_master:'',principal:'',days_opened:op,days_present:pr})
   ].concat(traitCalls)).then(function(){
     DB_FEES[sid]={total:Number(document.getElementById('pf-fee-total').value||0),paid:Number(document.getElementById('pf-fee-paid').value||0),debt:Number(document.getElementById('pf-fee-debt').value||0)};
@@ -4345,7 +4345,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
 
   var rdCfg=getResumptionDate();
   var resumeDate=fees.resume_date?new Date(fees.resume_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):fees.resume?new Date(fees.resume).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):rdCfg?new Date(rdCfg).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'--';
-  var feeBal=Number(fees.total||0)+Number(fees.debt||0)-Number(fees.paid||0);
+  var feeCategory=FEE_CATS[CLS]||'primary';var feeMatrix=getBillMatrix();var configuredFees=getBillLines(feeCategory).filter(function(label){return isBillLineEnabled(feeCategory,label)&&Number(feeMatrix[feeCategory]&&feeMatrix[feeCategory][label]||0)>0;});
   var dept=DEPTS[CLS]?DEPTS[CLS].label:CLS;
   var overallPerf=avg!==''?getGrade(avg).r:'--';
   var att={opened:rem.days_opened||'',present:rem.days_present||'',absent:Number(rem.days_opened||0)-Number(rem.days_present||0)||''};
@@ -4470,19 +4470,13 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
     h+='</tr></table>';
   }
 
-  // FEES STATUS
-  if(sec.showFees){
-    h+='<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+'">'
-      +'<tr>'
-      +'<td rowspan="2" style="background:'+NAVY+';color:'+WHITE+';padding:8px 10px;text-align:center;font-weight:700;font-size:8pt;width:100px;vertical-align:middle;'+P+'">SCHOOL FEES STATUS</td>'
-      +'<th style="background:'+MINT+';padding:5px 8px;text-align:center;border:1px solid '+BORDER+';font-size:8pt;'+P+'">Amount Paid</th>'
-      +'<th style="background:'+MINT+';padding:5px 8px;text-align:center;border:1px solid '+BORDER+';font-size:8pt;'+P+'">Previous Debt</th>'
-      +'<th style="background:'+MINT+';padding:5px 8px;text-align:center;border:1px solid '+BORDER+';font-size:8pt;'+P+'">Outstanding Balance</th>'
-      +'</tr><tr>'
-      +'<td style="padding:6px 8px;text-align:center;border:1px solid '+BORDER+';font-weight:700">'+(fees.paid?'N'+Number(fees.paid).toLocaleString():'--')+'</td>'
-      +'<td style="padding:6px 8px;text-align:center;border:1px solid '+BORDER+';font-weight:700">'+(fees.debt?'N'+Number(fees.debt).toLocaleString():'--')+'</td>'
-      +'<td style="padding:6px 8px;text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+(feeBal>0?'#c0392b':'#065f46')+'">'+(fees.total?'N'+feeBal.toLocaleString():'--')+'</td>'
-      +'</tr></table>';
+  // CONFIGURED FEES AND PAYMENTS
+  if(sec.showFees&&configuredFees.length){
+    h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Configured Fees &amp; Payments</div>'
+      +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
+      +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">AMOUNT</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">PAID THIS TERM</th></tr></thead><tbody>'
+      +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">N'+Number(feeMatrix[feeCategory][label]||0).toLocaleString()+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(fees.paid?'N'+Number(fees.paid).toLocaleString():'--')+'</td></tr>';}).join('')
+      +'</tbody></table>';
   }
   // NEXT TERM SECTION (resumption date only)
   if(sec.showNextTerm!==false&&getResumptionDate()){
@@ -4793,7 +4787,7 @@ function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var tabs=[['all','Overview'],['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(/Promotion thresholds|Assessment scope|Senior Secondary departments/.test(h)){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(/Promotion thresholds|Assessment scope|Senior Secondary departments/.test(h)){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=tab==='all'||c.getAttribute('data-settings-group')===tab?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
