@@ -824,7 +824,7 @@ body.result-context-read-only .results-history-readable{display:flex}
         <span id="sheet-pub-badge" style="display:none;background:#10b981;color:#fff;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px">Published</span>
       </div>
       <div class="tbl-wrap" style="margin-bottom:14px">
-        <div class="sheet-header">
+        <div class="sheet-header" id="score-sheet-header">
           <span>#</span><span>Student</span>
           <span style="text-align:center">CA1<br><small style="opacity:.7;font-weight:400">max10</small></span>
           <span style="text-align:center">CA2<br><small style="opacity:.7;font-weight:400">max10</small></span>
@@ -3476,6 +3476,7 @@ function openSheet(idx){
   badge.style.display=isPub?'inline':'none';
   btn.textContent=isPub?'Unpublish':'Publish Subject';
   btn.className=isPub?'btn btn-outline':'btn btn-primary';
+  var assessment=getAssessmentConfig();var header=document.getElementById('score-sheet-header');if(header){var headerHtml='<span>#</span><span>Student</span>';for(var hi=0;hi<assessment.caCount;hi++)headerHtml+='<span style="text-align:center">CA'+(hi+1)+'<br><small style="opacity:.7;font-weight:400">max'+assessment.caMarks[hi]+'</small></span>';headerHtml+='<span style="text-align:center">Exam<br><small style="opacity:.7;font-weight:400">max'+assessment.examMark+'</small></span><span style="text-align:center">Total</span><span style="text-align:center">Grade</span><span style="text-align:center">Remark</span>';header.innerHTML=headerHtml;}
   var html='';
   students.forEach(function(s,rowIdx){
     var sc=scorePersisted(s.id,idx);
@@ -3484,7 +3485,7 @@ function openSheet(idx){
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
       +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"/>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"/>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
       +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(total!==''?total:'--')+'</span>'
@@ -3828,7 +3829,7 @@ function renderBroadsheet(){
     return;
   }
 
-  var BORDER='#b8edd8'; var NAVY='#1a2a4a'; var MINT='#edf8f4'; var WHITE='#fff';
+  var BORDER='#b8edd8'; var NAVY='#1a2a4a'; var MINT='#edf8f4'; var WHITE='#fff'; var assessment=getAssessmentConfig();
   var P='font-family:Arial,sans-serif;';
 
   // Header
@@ -3859,10 +3860,8 @@ function renderBroadsheet(){
     html+='<thead><tr style="background:'+MINT+'">'
       +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:left;color:'+NAVY+';width:40px">#</th>'
       +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:left;color:'+NAVY+'">Student Name</th>'
-      +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:42px">CA1<br><span style="font-size:7pt;font-weight:400">/10</span></th>'
-      +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:42px">CA2<br><span style="font-size:7pt;font-weight:400">/10</span></th>'
-      +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:42px">CA3<br><span style="font-size:7pt;font-weight:400">/10</span></th>'
-      +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:48px">Exam<br><span style="font-size:7pt;font-weight:400">/70</span></th>'
+      +Array.from({length:assessment.caCount},function(_,ci){return'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:42px">CA'+(ci+1)+'<br><span style="font-size:7pt;font-weight:400">/'+assessment.caMarks[ci]+'</span></th>';}).join('')
+      +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:48px">Exam<br><span style="font-size:7pt;font-weight:400">/'+assessment.examMark+'</span></th>'
       +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:48px">Total<br><span style="font-size:7pt;font-weight:400">/100</span></th>'
       +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:38px">Grade</th>'
       +'<th style="padding:6px 8px;border:1px solid '+BORDER+';text-align:center;color:'+NAVY+';width:38px">Pos</th>'
@@ -3888,9 +3887,7 @@ function renderBroadsheet(){
       html+='<tr style="background:'+bg+'">'
         +'<td style="padding:5px 8px;border:1px solid '+BORDER+';color:#888">'+(ri+1)+'</td>'
         +'<td style="padding:5px 8px;border:1px solid '+BORDER+';font-weight:600;color:'+NAVY+'">'+s.name+'</td>'
-        +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center">'+(sc.ca1!==undefined&&sc.ca1!==''?sc.ca1:'')+'</td>'
-        +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center">'+(sc.ca2!==undefined&&sc.ca2!==''?sc.ca2:'')+'</td>'
-        +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center">'+(sc.ca3!==undefined&&sc.ca3!==''?sc.ca3:'')+'</td>'
+        +Array.from({length:assessment.caCount},function(_,ci){var value=sc['ca'+(ci+1)];return'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center">'+(value!==undefined&&value!==''?value:'')+'</td>';}).join('')
         +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center">'+(sc.exam!==undefined&&sc.exam!==''?sc.exam:'')+'</td>'
         +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center;font-weight:700;color:'+(t!==''?gd.c:'#aaa')+'">'+(t!==''?t:'')+'</td>'
         +'<td style="padding:5px 8px;border:1px solid '+BORDER+';text-align:center;font-weight:700;color:'+(t!==''?gd.c:'#aaa')+'">'+(gd.g||'')+'</td>'
@@ -3912,14 +3909,15 @@ function exportBroadsheet(){
 function exportBroadsheetNow(){
   var students=DB_STUDENTS[CLS]||[];
   var subjs=subjects();
+  var assessment=getAssessmentConfig();
   if(!students.length){showToast('No students to export','error');return;}
-  var rows=[['#','Student','Gender'].concat(subjs.map(function(s){return[s+' CA1',s+' CA2',s+' CA3',s+' Exam',s+' Total'];})).flat()];
+  var rows=[['#','Student','Gender'].concat(subjs.map(function(s){var cols=[];for(var ci=0;ci<assessment.caCount;ci++)cols.push(s+' CA'+(ci+1));cols.push(s+' Exam',s+' Total');return cols;}).flat())];
   students.forEach(function(st,i){
     var sc=DB_SCORES[st.id]||{};
     var row=[i+1,st.name,st.gender];
     subjs.forEach(function(_,idx){
       var r=sc[idx]||{};var t=computeTotal(r);
-      row.push(r.ca1||'',r.ca2||'',r.ca3||'',r.exam||'',t!==''?t:'');
+      for(var ci=0;ci<assessment.caCount;ci++)row.push(r['ca'+(ci+1)]||'');row.push(r.exam||'',t!==''?t:'');
     });
     rows.push(row);
   });
@@ -4242,6 +4240,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var sec=getSections();
   var school=getSchool();
   var cfg=getCfg();var sig=cfg.signature||{};
+  var assessment=getAssessmentConfig();
 
   // Class averages use global scores (other students already loaded for this term)
   var allAvgs=students.map(function(st){
@@ -4359,8 +4358,8 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<table style="width:100%;border-collapse:collapse;font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'">'
       +'<th style="padding:5px 6px;text-align:left;border:1px solid '+BORDER+'">SUBJECT</th>'
-      +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">C.A.<br/><small>(30%)</small></th>'
-      +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">EXAM<br/><small>(70%)</small></th>'
+      +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">C.A.<br/><small>('+assessment.caMarks.slice(0,assessment.caCount).reduce(function(a,x){return a+Number(x||0);},0)+'%)</small></th>'
+      +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">EXAM<br/><small>('+assessment.examMark+'%)</small></th>'
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">TOTAL<br/><small>(100%)</small></th>'
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">GRADE</th>'
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">CLASS AVG</th>'
@@ -4371,8 +4370,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
         var rb=i%2===0?WHITE:MINT;
         if(!isPublished(CLS,i)){return'';}
         var r2=sc[i]||{};var t=tots[i];var gd=getGrade(t);var ss=subjStats[i];
-        var hasCa=(r2.ca1!==undefined&&r2.ca1!==''&&r2.ca1!==null)||(r2.ca2!==undefined&&r2.ca2!==''&&r2.ca2!==null)||(r2.ca3!==undefined&&r2.ca3!==''&&r2.ca3!==null);
-        var caTotal=hasCa?Math.min(30,Number(r2.ca1||0)+Number(r2.ca2||0)+Number(r2.ca3||0)):'';
+        var caTotal=assessmentCaTotal(r2);
         return'<tr style="background:'+rb+';'+P+'">'
           +'<td style="padding:4px 6px;border:1px solid '+BORDER+';font-weight:600;color:'+NAVY+'">'+subj+'</td>'
           +'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+'">'+(caTotal!==''?caTotal:'')+'</td>'
@@ -4704,6 +4702,9 @@ function getAssessmentConfig(){
   var cfg=getCfg();var a=cfg.assessment||{};var count=Math.max(1,Math.min(3,Number(a.caCount||2)));var marks=Array.isArray(a.caMarks)?a.caMarks.slice(0,3):[15,15,10];
   while(marks.length<3)marks.push(10);return{caCount:count,caMarks:marks.map(function(v){return Math.max(1,Number(v)||10);}),examMark:Math.max(1,Number(a.examMark||70))};
 }
+function assessmentCaTotal(sc){
+  if(!sc)return'';var a=getAssessmentConfig();var total=0,has=false;for(var i=0;i<a.caCount;i++){var value=sc['ca'+(i+1)];if(value!==''&&value!==null&&value!==undefined){has=true;total+=Number(value||0);}}return has?Math.min(a.caMarks.slice(0,a.caCount).reduce(function(sum,v){return sum+Number(v||0);},0),total):'';
+}
 function renderAssessmentConfigFields(){
   var countEl=document.getElementById('assessment-ca-count'),fields=document.getElementById('assessment-ca-fields'),exam=document.getElementById('assessment-exam-mark');if(!fields)return;
   var a=getAssessmentConfig();if(countEl)countEl.value=String(a.caCount);if(exam)exam.value=a.examMark;
@@ -4712,7 +4713,7 @@ function renderAssessmentConfigFields(){
 function saveAssessmentConfig(){
   if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change assessment marks.','error');return;}
   var count=Math.max(1,Math.min(3,Number((document.getElementById('assessment-ca-count')||{}).value||2)));var marks=[];document.querySelectorAll('.assessment-ca-mark').forEach(function(input){marks.push(Math.max(1,Number(input.value)||10));});
-  var exam=Math.max(1,Number((document.getElementById('assessment-exam-mark')||{}).value||70));var cfg=getCfg();cfg.assessment={caCount:count,caMarks:marks,examMark:exam};saveCfg(cfg);showToast('Assessment mark structure saved.');
+  var exam=Math.max(1,Number((document.getElementById('assessment-exam-mark')||{}).value||70));var cfg=getCfg();cfg.assessment={caCount:count,caMarks:marks,examMark:exam};saveCfg(cfg);renderCurrentPageAfterSync();showToast('Assessment mark structure saved and applied across the portal.');
 }
 function renderSecondaryDepartmentSettings(){
   var root=document.getElementById('secondary-department-toggles');if(!root)return;var cfg=getCfg();var selected=cfg.secondaryDepartments||{};var levels=[['ss1','SS1',[['general','General'],['science','Science'],['arts','Arts'],['business','Commercial / Business']]],['ss2','SS2',[['science','Science'],['arts','Arts'],['business','Commercial / Business']]],['ss3','SS3',[['science','Science'],['arts','Arts'],['business','Commercial / Business']]]];
