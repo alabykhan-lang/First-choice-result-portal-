@@ -790,7 +790,7 @@ body.result-context-read-only .results-history-readable{display:flex}
         <button class="btn btn-primary btn-sm" onclick="navTo('students',document.getElementById('ni-students'))">View All</button>
       </div>
       <table class="data-table">
-        <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Dept</th><th>Average</th><th>Rank</th><th>Fees</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Dept</th><th>Average</th><th>Rank</th></tr></thead>
         <tbody id="d-tbody"></tbody>
       </table>
     </div>
@@ -1387,15 +1387,6 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div style="background:var(--g1);color:#fff;padding:6px 12px;font-size:.72rem;font-weight:700;text-transform:uppercase">Psychomotor Skills</div>
           <div id="pf-psy"></div>
         </div>
-      </div>
-      <p class="sec-title">School Fees</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div class="fee-field"><label>Term Fees (N)</label><input class="inp" type="number" id="pf-fee-total" oninput="pfBalance()"/></div>
-        <div class="fee-field"><label>Amount Paid (N)</label><input class="inp" type="number" id="pf-fee-paid" oninput="pfBalance()"/></div>
-        <div class="fee-field"><label>Previous Debt (N)</label><input class="inp" type="number" id="pf-fee-debt" oninput="pfBalance()"/></div>
-        <div class="fee-field"><label>Next Term Fees</label><div id="pf-next-fee-lbl" style="font-weight:700;color:var(--g1);padding:6px 0;font-size:.92rem">--</div></div>
-        <div class="fee-field"><label>Next Term Begins</label><div id="pf-resume-lbl" style="font-weight:700;color:var(--g1);padding:6px 0;font-size:.92rem">--</div></div>
-        <div class="fee-balance" id="pf-fee-bal"><div class="val" id="pf-bal-val">N0</div><div class="lbl">Outstanding Balance</div></div>
       </div>
       <p class="sec-title">Attendance</p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -3180,7 +3171,7 @@ function renderDash(){
   var ranks=getRanks();
   var tbody=document.getElementById('d-tbody');
   if(!students.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--gray)">No students yet. Add students to get started.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray)">No students yet. Add students to get started.</td></tr>';
     return;
   }
   var dept=DEPTS[CLS].label;
@@ -3188,9 +3179,6 @@ function renderDash(){
   var deptKey=CLS.includes('science')?'badge-sci':CLS.includes('arts')?'badge-arts':'badge-bus';
   tbody.innerHTML=students.map(function(s,i){
     var avg=studentSummary(s.id).avg;
-    var fees=DB_FEES[s.id]||{};
-    var bal=Number(fees.total||0)+Number(fees.debt||0)-Number(fees.paid||0);
-    var feesBadge=fees.total?(bal<=0?'<span class="badge badge-green">Cleared</span>':'<span class="badge badge-red">N'+bal.toLocaleString()+'</span>'):'<span style="color:#ccc">--</span>';
     var rk=ranks[s.id];
     var rkEl=rk?'<span class="rk '+(rk<=3?'rk'+rk:'rkn')+'">'+rk+'</span>':'--';
     return'<tr data-clickable data-sid="'+s.id+'">'
@@ -3199,7 +3187,7 @@ function renderDash(){
       +'<td><span class="badge '+(s.gender==='Male'?'badge-blue':'badge-gold')+'">'+s.gender+'</span></td>'
       +'<td><span class="badge '+deptKey+'">'+deptPart+'</span></td>'
       +'<td style="font-weight:700;color:'+(avg!==''?gc(avg):'#aaa')+'">'+(avg!==''?avg:'--')+'</td>'
-      +'<td>'+rkEl+'</td><td>'+feesBadge+'</td></tr>';
+      +'<td>'+rkEl+'</td></tr>';
   }).join('');
   // Attach click handlers
   var rows=tbody.querySelectorAll('tr[data-sid]');
@@ -3510,6 +3498,8 @@ function scoreSaveMessage(error){
   if(code==='RESULT_ACADEMIC_SESSION_NOT_ACTIVE'||code==='RESULT_CONTEXT_INVALID')return 'Save failed — not recorded: select the selected academic session again.';
   if(code==='RESULT_CLASS_SCOPE_DENIED'||code==='RESULT_SUBJECT_SCOPE_DENIED')return 'Save failed — not recorded: this class or subject is not assigned.';
   if(code==='RESULT_PERMISSION_DENIED')return 'Save failed — not recorded: score-entry permission is required.';
+  var detail=error&&((error.message)||(error.payload&&error.payload.message)||(error.payload&&error.payload.hint));
+  if(detail)return 'Save failed — '+detail;
   return 'Save failed — not recorded';
 }
 function queueScoreSave(studentId,subjectIdx){
@@ -3753,19 +3743,6 @@ function renderProfile(s){
     };
   });
 
-  // Fees
-  var fees=DB_FEES[sid]||{};
-  document.getElementById('pf-fee-total').value=fees.total||'';
-  document.getElementById('pf-fee-paid').value=fees.paid||'';
-  document.getElementById('pf-fee-debt').value=fees.debt||'';
-  pfBalance();
-  var nf=getNextTermFee(CLS);
-  var rd=getResumptionDate();
-  var nfl=document.getElementById('pf-next-fee-lbl');
-  if(nfl)nfl.textContent=nf?'₦'+Number(nf).toLocaleString():'Not set in Settings';
-  var rfl=document.getElementById('pf-resume-lbl');
-  if(rfl)rfl.textContent=rd?new Date(rd).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'Not set in Settings';
-
   // Attendance
   var rem=DB_REMARKS[sid]||{};
   document.getElementById('pf-att-open').value=rem.days_opened||'';
@@ -3775,15 +3752,6 @@ function renderProfile(s){
   document.getElementById('modal-profile').style.display='flex';
 }
 
-function pfBalance(){
-  var t=Number(document.getElementById('pf-fee-total').value||0);
-  var p=Number(document.getElementById('pf-fee-paid').value||0);
-  var d=Number(document.getElementById('pf-fee-debt').value||0);
-  var bal=t+d-p;
-  document.getElementById('pf-bal-val').textContent='N'+bal.toLocaleString();
-  document.getElementById('pf-fee-bal').style.background=
-    bal<=0?'linear-gradient(135deg,#065f46,#10b981)':'linear-gradient(135deg,#7f1d1d,#c0392b)';
-}
 function pfAbsent(){
   var op=Number(document.getElementById('pf-att-open').value||0);
   var pr=Number(document.getElementById('pf-att-present').value||0);
@@ -3807,14 +3775,9 @@ function saveProfile(){
       {student_id:sid,class_key:dbClassKey(CLS),term:TERM,trait_type:'psychomotor',trait_name:tr,rating:traits.psychomotor[tr]}));
   });
   Promise.all([
-    dbUpsertConflict('fees','student_id,term,academic_session',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
-      total:Number(document.getElementById('pf-fee-total').value||0),
-      paid:Number(document.getElementById('pf-fee-paid').value||0),
-      debt:Number(document.getElementById('pf-fee-debt').value||0)}),
     dbUpsertConflict('remarks','student_id,term,academic_session',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
       academic:'',form_master:'',principal:'',days_opened:op,days_present:pr})
   ].concat(traitCalls)).then(function(){
-    DB_FEES[sid]={total:Number(document.getElementById('pf-fee-total').value||0),paid:Number(document.getElementById('pf-fee-paid').value||0),debt:Number(document.getElementById('pf-fee-debt').value||0)};
     DB_REMARKS[sid]=DB_REMARKS[sid]||{};
     DB_REMARKS[sid].days_opened=op;DB_REMARKS[sid].days_present=pr;
     hideLoad();showToast('Profile saved');closeModal('modal-profile');
@@ -4478,9 +4441,9 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   if(sec.showFees&&configuredFees.length){
     h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Configured Fees &amp; Payments</div>'
       +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
-      +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">AMOUNT</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">PAID THIS TERM</th></tr></thead><tbody>'
-      +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;var amount=Number(feeMatrix[feeCategory][label]||0);return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(amount?'N'+amount.toLocaleString():'--')+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">--</td></tr>';}).join('')
-      +'<tr style="background:'+MINT+';font-weight:700"><td style="padding:6px 8px;border:1px solid '+BORDER+'">Payment recorded this term</td><td style="padding:6px 8px;text-align:right;border:1px solid '+BORDER+'">N'+configuredFees.reduce(function(sum,label){return sum+Number(feeMatrix[feeCategory][label]||0);},0).toLocaleString()+'</td><td style="padding:6px 8px;text-align:right;border:1px solid '+BORDER+'">'+(fees.paid?'N'+Number(fees.paid).toLocaleString():'--')+'</td></tr></tbody></table>';
+      +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">AMOUNT DUE</th></tr></thead><tbody>'
+      +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;var amount=Number(feeMatrix[feeCategory][label]||0);return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(amount?'N'+amount.toLocaleString():'--')+'</td></tr>';}).join('')
+      +'</tbody></table>';
   }
   // NEXT TERM SECTION (resumption date only)
   if(sec.showNextTerm!==false&&getResumptionDate()){

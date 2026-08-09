@@ -111,7 +111,9 @@ async function upsert(table, body, token) {
     fees: 'student_id,term,academic_session',
     published_subjects: 'class_key,subject_index,term,academic_session',
   };
-  const conflict = conflictKeys[table] ? `?on_conflict=${encodeURIComponent(conflictKeys[table])}` : '';
+  // Keep composite conflict targets comma-separated for PostgREST. Encoding
+  // the commas can make the hosted Supabase REST endpoint ignore the target.
+  const conflict = conflictKeys[table] ? `?on_conflict=${conflictKeys[table]}` : '';
   const rows = await supabaseRest(`${table}${conflict}`, {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=representation',
@@ -196,7 +198,31 @@ async function handleAction(action, payload, token) {
     return { ok: true, removed: Array.isArray(rows) ? rows.length : 0 };
   }
   if (action === 'scores.enter') {
-    return { ok: true, score: await upsert('scores', payload, token) };
+    // Update the exact score row when it already exists, otherwise insert it.
+    // This is deliberately explicit so score entry remains reliable even when
+    // PostgREST's composite upsert handling differs between deployments.
+    const match = `scores?student_id=eq.${encodeURIComponent(payload.student_id)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&term=eq.${encodeURIComponent(payload.term)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}&limit=1`;
+    const existing = await supabaseRest(match, {}, token);
+    const scoreBody = {
+      student_id: payload.student_id,
+      class_key: payload.class_key,
+      subject_index: payload.subject_index,
+      term: payload.term,
+      academic_session: payload.academic_session,
+      ca1: payload.ca1 ?? null,
+      ca2: payload.ca2 ?? null,
+      ca3: payload.ca3 ?? null,
+      exam: payload.exam ?? null,
+    };
+    if (existing?.[0]?.id) {
+      const rows = await supabaseRest(`scores?id=eq.${encodeURIComponent(existing[0].id)}`, {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: scoreBody,
+      }, token);
+      return { ok: true, score: rows?.[0] || existing[0] };
+    }
+    return { ok: true, score: await upsert('scores', scoreBody, token) };
   }
   if (action === 'traits.enter') {
     return { ok: true, trait: await upsert('traits', payload, token) };
