@@ -1643,12 +1643,35 @@ function loginSuccess(user,mode){
 }
 
 function restorePortalPageAfterLogin(){
-  // A browser refresh always returns staff to the safe Home landing page.
-  // Class/term state is selected explicitly by the user, never restored as a stale page.
-  try{['wts_page','wts_cls','wts_term','wts_session'].forEach(function(key){sessionStorage.removeItem(key);});}catch(e){}
+  // Home remains the safe fallback. If a user was actively entering scores,
+  // preserve that exact class, term, and subject so a refresh does not lose
+  // the working sheet.
+  var savedPage='',savedClass='',savedTerm='',savedSession='',savedSheet='';
+  try{
+    savedPage=sessionStorage.getItem('wts_page')||'';
+    savedClass=sessionStorage.getItem('wts_cls')||'';
+    savedTerm=sessionStorage.getItem('wts_term')||'';
+    savedSession=sessionStorage.getItem('wts_session')||'';
+    savedSheet=sessionStorage.getItem('wts_sheet_idx')||'';
+    ['wts_page','wts_cls','wts_term','wts_session','wts_sheet_idx'].forEach(function(key){sessionStorage.removeItem(key);});
+  }catch(e){}
   CONTEXT_EXPLICIT=false;
   SELECTED_SESSION=null;
   CONTEXT_READ_ONLY=false;
+  if(savedPage==='scores'&&savedClass&&DEPTS[savedClass]&&savedTerm&&savedSession){
+    CLS=savedClass;TERM=savedTerm;SELECTED_SESSION=savedSession;CONTEXT_EXPLICIT=true;
+    CONTEXT_READ_ONLY=!isOfficialOpenContext(savedSession,savedTerm);
+    setMode(true);syncContextDisplay();
+    setResultContext(savedClass,savedSession,savedTerm,CONTEXT_READ_ONLY)
+      .then(function(){return loadClass(savedClass,null,true);})
+      .then(function(){
+        navTo('scores',document.getElementById('ni-scores'));
+        var idx=Number(savedSheet);
+        if(savedSheet!==''&&isFinite(idx)&&idx>=0&&idx<subjects().length)openSheet(idx);
+      })
+      .catch(function(){goHome();});
+    return;
+  }
   setMode(false);
   navTo('home',document.getElementById('ni-home'));
 }
@@ -2110,7 +2133,11 @@ function renderCurrentPageAfterSync(){
   if(id==='home')renderHome();
   if(id==='dashboard')renderDash();
   if(id==='students')renderStudents();
-  if(id==='scores')renderScoreGrid();
+  if(id==='scores'){
+    var openScoreSheet=currentSheetIdx;
+    renderScoreGrid();
+    if(openScoreSheet>=0&&openScoreSheet<subjects().length)openSheet(openScoreSheet);
+  }
   if(id==='broadsheet')renderBroadsheet();
   if(id==='progress')renderProgress();
   if(id==='analytics')renderAnalytics();
@@ -2690,7 +2717,11 @@ function navTo(id,el){
   if(id==='history'){setMode(false);loadHistoryDashboard();}
   if(id==='dashboard')renderDash();
   if(id==='students')renderStudents();
-  if(id==='scores')renderScoreGrid();
+  if(id==='scores'){
+    try{sessionStorage.removeItem('wts_sheet_idx');}catch(e){}
+    currentSheetIdx=-1;
+    renderScoreGrid();
+  }
   if(id==='broadsheet'){refreshBroadsheet();}
   if(id==='progress'){refreshProgress();}
   if(id==='card'){
@@ -3526,6 +3557,13 @@ function openSheet(idx){
   var students=DB_STUDENTS[CLS]||[];
   var subjs=subjects();
   currentSheetIdx=idx;
+  try{
+    sessionStorage.setItem('wts_page','scores');
+    sessionStorage.setItem('wts_sheet_idx',String(idx));
+    sessionStorage.setItem('wts_cls',CLS);
+    sessionStorage.setItem('wts_session',getActiveSession());
+    sessionStorage.setItem('wts_term',TERM);
+  }catch(e){}
   var isPub=isPublished(CLS,idx);
   document.getElementById('scores-grid-view').style.display='none';
   document.getElementById('scores-sheet-view').style.display='block';
@@ -3584,6 +3622,7 @@ function openSheet(idx){
 function closeSheet(){
 
   currentSheetIdx=-1;
+  try{sessionStorage.removeItem('wts_sheet_idx');}catch(e){}
   document.getElementById('scores-sheet-view').style.display='none';
   document.getElementById('scores-grid-view').style.display='block';
   renderScoreGrid();
