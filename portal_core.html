@@ -1031,6 +1031,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           </div>
           <div style="font-weight:700;font-size:.82rem;color:var(--g1);margin-bottom:8px">Bill schedule by school section (&#8358;)</div>
           <div id="bill-config-grid"></div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="saveBillSettings()" style="margin-top:12px">Save bills</button>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
@@ -1421,7 +1422,7 @@ var FEE_CATS={
   jss1:'junior_secondary',jss2:'junior_secondary',jss3:'junior_secondary',
   'ss1-general':'senior_secondary',
   'ss2-science':'senior_secondary','ss2-arts':'senior_secondary','ss2-business':'senior_secondary',
-  'ss3-science':'senior_secondary','ss3-arts':'senior_secondary'
+  'ss3-science':'senior_secondary','ss3-arts':'senior_secondary','ss3-business':'senior_secondary'
 };
 function getSessionCfg(){
   var cfg=getCfg();
@@ -1440,6 +1441,10 @@ function billInputId(k,label){return 'bill-'+k+'-'+label.toLowerCase().replace(/
 function renderBillConfig(){var el=document.getElementById('bill-config-grid');if(!el)return;var m=getBillMatrix();el.innerHTML=Object.keys(BILL_SECTIONS).map(function(k){return '<div class="bill-section"><h4>'+BILL_SECTIONS[k]+' <span style="float:right;color:var(--g3)">Total: N<span id="bill-total-'+k+'">0</span></span></h4><div class="bill-grid">'+getBillLines(k).map(function(label){var id=billInputId(k,label),enabled=isBillLineEnabled(k,label),custom=BILL_LINES.indexOf(label)<0;return '<label><span style="display:flex;align-items:center;justify-content:space-between;gap:5px"><span><input type="checkbox" '+(enabled?'checked':'')+' onchange="toggleBillLine(\''+k+'\',\''+escapeHtml(label).replace(/'/g,'\\\'')+'\',this.checked)"/> '+escapeHtml(label)+'</span>'+(custom?'<button type="button" class="btn btn-danger btn-xs" onclick="removeBillLine(\''+k+'\',\''+escapeHtml(label).replace(/'/g,'\\\'')+'\')">×</button>':'')+'</span><input type="number" min="0" id="'+id+'" value="'+(m[k][label]||'')+'" '+(enabled?'':'disabled')+' oninput="updateBillTotal(\''+k+'\')"/></label>';}).join('')+'</div><div style="display:flex;gap:6px;margin-top:10px"><input class="inp" id="new-bill-'+k+'" placeholder="Add fee item" style="padding:7px 9px;font-size:.75rem"/><button type="button" class="btn btn-outline btn-xs" onclick="addBillLine(\''+k+'\')">Add fee</button></div></div>';}).join('');Object.keys(BILL_SECTIONS).forEach(updateBillTotal);}
 function updateBillTotal(k){var total=0;getBillLines(k).forEach(function(label){var id=billInputId(k,label),el=document.getElementById(id);if(isBillLineEnabled(k,label))total+=Number(el&&el.value||0);});var out=document.getElementById('bill-total-'+k);if(out)out.textContent=total.toLocaleString();}
 function readBillMatrix(){var m={};Object.keys(BILL_SECTIONS).forEach(function(k){m[k]={};getBillLines(k).forEach(function(label){var id=billInputId(k,label),el=document.getElementById(id);m[k][label]=Number(el&&el.value||0);});});return m;}
+function saveBillSettings(){
+  if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to save bills.','error');return;}
+  var cfg=getCfg(),sc=getSessionCfg();cfg.sessionCfg=Object.assign({},sc,{bills:readBillMatrix(),customBillLines:sc.customBillLines||{},billLineEnabled:sc.billLineEnabled||{}});saveCfg(cfg);showToast('Bills saved and synchronized across the portal.');renderBillConfig();
+}
 function addBillLine(k){var el=document.getElementById('new-bill-'+k),label=el&&el.value.trim();if(!label)return;var cfg=getCfg();if(!cfg.sessionCfg)cfg.sessionCfg={};if(!cfg.sessionCfg.customBillLines)cfg.sessionCfg.customBillLines={};if(!cfg.sessionCfg.customBillLines[k])cfg.sessionCfg.customBillLines[k]=[];if(getBillLines(k).indexOf(label)<0)cfg.sessionCfg.customBillLines[k].push(label);saveCfg(cfg);renderBillConfig();showToast('Fee item added.');}
 function removeBillLine(k,label){var cfg=getCfg();if(!cfg.sessionCfg||!cfg.sessionCfg.customBillLines||!cfg.sessionCfg.customBillLines[k])return;cfg.sessionCfg.customBillLines[k]=cfg.sessionCfg.customBillLines[k].filter(function(v){return v!==label;});saveCfg(cfg);renderBillConfig();showToast('Fee item removed.');}
 function toggleBillLine(k,label,on){var cfg=getCfg();if(!cfg.sessionCfg)cfg.sessionCfg={};if(!cfg.sessionCfg.billLineEnabled)cfg.sessionCfg.billLineEnabled={};if(!cfg.sessionCfg.billLineEnabled[k])cfg.sessionCfg.billLineEnabled[k]={};cfg.sessionCfg.billLineEnabled[k][label]=Boolean(on);saveCfg(cfg);var input=document.getElementById(billInputId(k,label));if(input)input.disabled=!on;updateBillTotal(k);}
@@ -4345,7 +4350,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
 
   var rdCfg=getResumptionDate();
   var resumeDate=fees.resume_date?new Date(fees.resume_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):fees.resume?new Date(fees.resume).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):rdCfg?new Date(rdCfg).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'--';
-  var feeCategory=FEE_CATS[CLS]||'primary';var feeMatrix=getBillMatrix();var configuredFees=getBillLines(feeCategory).filter(function(label){return isBillLineEnabled(feeCategory,label)&&Number(feeMatrix[feeCategory]&&feeMatrix[feeCategory][label]||0)>0;});
+  var feeCategory=FEE_CATS[CLS]||'primary';var feeMatrix=getBillMatrix();var configuredFees=getBillLines(feeCategory).filter(function(label){return isBillLineEnabled(feeCategory,label);});
   var dept=DEPTS[CLS]?DEPTS[CLS].label:CLS;
   var overallPerf=avg!==''?getGrade(avg).r:'--';
   var att={opened:rem.days_opened||'',present:rem.days_present||'',absent:Number(rem.days_opened||0)-Number(rem.days_present||0)||''};
@@ -4422,7 +4427,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<table style="width:100%;border-collapse:collapse;font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'">'
       +'<th style="padding:5px 6px;text-align:left;border:1px solid '+BORDER+'">SUBJECT</th>'
-      +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">C.A.<br/><small>('+assessment.caMarks.slice(0,assessment.caCount).reduce(function(a,x){return a+Number(x||0);},0)+'%)</small></th>'
+      +assessment.caMarks.slice(0,assessment.caCount).map(function(mark,i){return'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">CA'+(i+1)+'<br/><small>('+mark+')</small></th>';}).join('')
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">EXAM<br/><small>('+assessment.examMark+'%)</small></th>'
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">TOTAL<br/><small>(100%)</small></th>'
       +'<th style="padding:5px 3px;text-align:center;border:1px solid '+BORDER+'">GRADE</th>'
@@ -4434,10 +4439,9 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
         var rb=i%2===0?WHITE:MINT;
         if(!isPublished(CLS,i)){return'';}
         var r2=sc[i]||{};var t=tots[i];var gd=getGrade(t);var ss=subjStats[i];
-        var caTotal=assessmentCaTotal(r2);
         return'<tr style="background:'+rb+';'+P+'">'
           +'<td style="padding:4px 6px;border:1px solid '+BORDER+';font-weight:600;color:'+NAVY+'">'+subj+'</td>'
-          +'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+'">'+(caTotal!==''?caTotal:'')+'</td>'
+          +assessment.caMarks.slice(0,assessment.caCount).map(function(_,ci){var value=r2['ca'+(ci+1)];return'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+'">'+(value!==undefined&&value!==''?value:'')+'</td>';}).join('')
           +'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+'">'+(r2.exam!==undefined&&r2.exam!==''?r2.exam:'')+'</td>'
           +'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+';font-weight:700;background:'+rb+'">'+(t!==''?t:'')+'</td>'
           +'<td style="padding:4px 3px;text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+(t!==''?gd.c:'#999')+'">'+(gd.g||'')+'</td>'
@@ -4475,8 +4479,8 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
     h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Configured Fees &amp; Payments</div>'
       +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">AMOUNT</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">PAID THIS TERM</th></tr></thead><tbody>'
-      +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">N'+Number(feeMatrix[feeCategory][label]||0).toLocaleString()+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(fees.paid?'N'+Number(fees.paid).toLocaleString():'--')+'</td></tr>';}).join('')
-      +'</tbody></table>';
+      +configuredFees.map(function(label,i){var rb=i%2===0?WHITE:MINT;var amount=Number(feeMatrix[feeCategory][label]||0);return'<tr style="background:'+rb+';'+P+'"><td style="padding:5px 8px;border:1px solid '+BORDER+'">'+label+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">'+(amount?'N'+amount.toLocaleString():'--')+'</td><td style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">--</td></tr>';}).join('')
+      +'<tr style="background:'+MINT+';font-weight:700"><td style="padding:6px 8px;border:1px solid '+BORDER+'">Payment recorded this term</td><td style="padding:6px 8px;text-align:right;border:1px solid '+BORDER+'">N'+configuredFees.reduce(function(sum,label){return sum+Number(feeMatrix[feeCategory][label]||0);},0).toLocaleString()+'</td><td style="padding:6px 8px;text-align:right;border:1px solid '+BORDER+'">'+(fees.paid?'N'+Number(fees.paid).toLocaleString():'--')+'</td></tr></tbody></table>';
   }
   // NEXT TERM SECTION (resumption date only)
   if(sec.showNextTerm!==false&&getResumptionDate()){
