@@ -178,6 +178,15 @@ async function handleAction(action, payload, token) {
     }, token);
     return { ok: true, student: rows?.[0] || null };
   }
+  if (action === 'demo.clear') {
+    await requireManagement(token);
+    const prefix = String(payload.prefix || 'Demo Pupil -').trim() || 'Demo Pupil -';
+    const rows = await supabaseRest(`students?name=like.${encodeURIComponent(`${prefix}%`)}`, {
+      method: 'DELETE',
+      prefer: 'return=representation',
+    }, token);
+    return { ok: true, removed: Array.isArray(rows) ? rows.length : 0 };
+  }
   if (action === 'scores.enter') {
     return { ok: true, score: await upsert('scores', payload, token) };
   }
