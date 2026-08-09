@@ -1212,6 +1212,13 @@ body.result-context-read-only .results-history-readable{display:flex}
   </div>
 </div>
 
+<div class="overlay" id="modal-ss-departments" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hdr"><h3 id="ss-department-title">Choose department</h3><button class="modal-x" onclick="closeModal('modal-ss-departments')">&#215;</button></div>
+    <div class="modal-body" style="padding:22px"><p style="font-size:.82rem;color:var(--gray);margin-bottom:14px">Choose the department for this class to continue.</p><div id="ss-department-options" class="home-grid" style="grid-template-columns:1fr;gap:10px"></div></div>
+  </div>
+</div>
+
 
 <!-- OCR SCANNER MODAL -->
 <div class="overlay" id="modal-ocr" style="display:none">
@@ -2827,7 +2834,7 @@ function renderHome(){
     var html='';
     group.keys.forEach(function(key){
       if(group.grid==='hg-ss'){
-        html+='<div class="class-card senior-parent-card" id="cc-'+key+'"><div class="cc-name">'+key.toUpperCase()+'</div><div class="cc-count">Open departments</div></div><div class="senior-dept-grid" id="senior-depts-'+key+'" style="display:none"></div>';
+        html+='<div class="class-card senior-parent-card" id="cc-'+key+'"><div class="cc-name">'+key.toUpperCase()+'</div><div class="cc-count">Choose department</div></div>';
         return;
       }
       var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;
@@ -2893,9 +2900,7 @@ function renderStaffOverview(){
   loadInviteSettings();
 }
 function toggleSeniorDepartments(level){
-  var root=document.getElementById('senior-depts-'+level);if(!root)return;var isOpen=root.style.display!=='none';if(isOpen){root.style.display='none';return;}
-  var cfg=getCfg();var enabled=cfg.secondaryDepartments||{science:true,arts:true,business:true};var html='';[['science','Science'],['arts','Arts'],['business','Commercial']].forEach(function(item){if(enabled[item[0]]===false)return;var key=level+'-'+item[0];var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;html+='<div class="class-card" id="cc-'+key+'"><div class="cc-name">'+d.label+'</div><div class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Tap to open')+'</div></div>';});
-  root.innerHTML=html||'<div class="empty">No SS departments are enabled. Management can enable them in Settings.</div>';root.style.display='grid';root.style.gridTemplateColumns='repeat(auto-fit,minmax(140px,1fr))';root.style.gap='10px';root.querySelectorAll('.class-card').forEach(function(card){card.onclick=function(){enterClass(card.id.slice(3));};});
+  var title=level.toUpperCase();var root=document.getElementById('ss-department-options');var heading=document.getElementById('ss-department-title');if(!root)return;if(heading)heading.textContent=title+' department';var cfg=getCfg();var all=level==='ss1'?[['general','General'],['science','Science'],['arts','Arts'],['business','Commercial']]:[['science','Science'],['arts','Arts'],['business','Commercial']];var enabled=(cfg.secondaryDepartments||{})[level]||{};var html='';all.forEach(function(item){if(enabled[item[0]]===false)return;var key=level+'-'+item[0];var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;html+='<button class="class-card" type="button" style="text-align:left" onclick="closeModal(\'modal-ss-departments\');enterClass(\''+key+'\')"><span class="cc-name">'+d.label+'</span><span class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Open class')+'</span></button>';});root.innerHTML=html||'<div class="empty">No departments are enabled. Management can enable them in Settings.</div>';document.getElementById('modal-ss-departments').style.display='flex';
 }
 
 function staffStatusLabel(row){
@@ -4710,12 +4715,12 @@ function saveAssessmentConfig(){
   var exam=Math.max(1,Number((document.getElementById('assessment-exam-mark')||{}).value||70));var cfg=getCfg();cfg.assessment={caCount:count,caMarks:marks,examMark:exam};saveCfg(cfg);showToast('Assessment mark structure saved.');
 }
 function renderSecondaryDepartmentSettings(){
-  var root=document.getElementById('secondary-department-toggles');if(!root)return;var cfg=getCfg();var selected=cfg.secondaryDepartments||{science:true,arts:true,business:true};
-  root.innerHTML=[['science','Science'],['arts','Arts'],['business','Commercial / Business']].map(function(item){return '<label style="display:flex;align-items:center;gap:8px;margin:9px 0;font-size:.82rem"><input type="checkbox" class="secondary-dept-toggle" data-dept="'+item[0]+'" '+(selected[item[0]]!==false?'checked':'')+'/> '+item[1]+'</label>';}).join('');
+  var root=document.getElementById('secondary-department-toggles');if(!root)return;var cfg=getCfg();var selected=cfg.secondaryDepartments||{};var levels=[['ss1','SS1',[['general','General'],['science','Science'],['arts','Arts'],['business','Commercial / Business']]],['ss2','SS2',[['science','Science'],['arts','Arts'],['business','Commercial / Business']]],['ss3','SS3',[['science','Science'],['arts','Arts'],['business','Commercial / Business']]]];
+  root.innerHTML=levels.map(function(level){var state=selected[level[0]]||{};return '<div class="bill-section"><h4>'+level[1]+' departments</h4>'+level[2].map(function(item){return '<label style="display:flex;align-items:center;gap:8px;margin:9px 0;font-size:.82rem"><input type="checkbox" class="secondary-dept-toggle" data-level="'+level[0]+'" data-dept="'+item[0]+'" '+(state[item[0]]!==false?'checked':'')+'/> '+item[1]+'</label>';}).join('')+'</div>';}).join('');
 }
 function saveSecondaryDepartments(){
   if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change departments.','error');return;}
-  var departments={};document.querySelectorAll('.secondary-dept-toggle').forEach(function(input){departments[input.getAttribute('data-dept')]=input.checked;});var cfg=getCfg();cfg.secondaryDepartments=departments;saveCfg(cfg);renderHome();showToast('Senior Secondary departments saved.');
+  var departments={ss1:{},ss2:{},ss3:{}};document.querySelectorAll('.secondary-dept-toggle').forEach(function(input){departments[input.getAttribute('data-level')][input.getAttribute('data-dept')]=input.checked;});var cfg=getCfg();cfg.secondaryDepartments=departments;saveCfg(cfg);renderHome();showToast('Senior Secondary departments saved.');
 }
 function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;

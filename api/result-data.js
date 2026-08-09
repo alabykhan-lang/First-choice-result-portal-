@@ -27,7 +27,19 @@ async function currentStaff(token) {
   const fallback = { id: user?.id, email: user?.email || '', role: email === DEVELOPER_EMAIL ? 'developer' : email === SCHOOL_ADMIN_EMAIL ? 'admin' : 'staff', suspended: false, is_developer: email === DEVELOPER_EMAIL };
   try {
     const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(user.id)}&limit=1`, {}, token);
-    return { user, profile: rows?.[0] || fallback };
+    if (rows?.[0]) return { user, profile: rows[0] };
+    // Existing developer/admin sessions may have been created before the
+    // profile bootstrap was installed. Establish the protected profile before
+    // running management queries so RLS can recognise the manager.
+    if (['developer', 'admin'].includes(fallback.role)) {
+      const created = await supabaseRest('staff_profiles', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=representation',
+        body: fallback,
+      }, token);
+      return { user, profile: created?.[0] || fallback };
+    }
+    return { user, profile: fallback };
   } catch (error) {
     return { user, profile: fallback };
   }
