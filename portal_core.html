@@ -1059,6 +1059,24 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentScope()">Save assessment mode</button>
         </div>
       </div>
+      <div class="tbl-wrap" style="margin-bottom:0">
+        <div class="tbl-head"><h3>Continuous assessment &amp; exam marks</h3></div>
+        <div style="padding:16px">
+          <div class="fg"><label>Number of CA entries per term</label><select class="sel" id="assessment-ca-count" onchange="renderAssessmentConfigFields()"><option value="1">1 CA</option><option value="2">2 CAs</option><option value="3">3 CAs</option></select></div>
+          <div id="assessment-ca-fields" class="fg-row" style="margin-top:10px"></div>
+          <div class="fg" style="margin-top:10px"><label>Exam obtainable mark</label><input class="inp" type="number" min="1" max="100" id="assessment-exam-mark"/></div>
+          <small style="display:block;color:var(--gray);font-size:.72rem;margin-top:8px">These marks control score-entry limits and the total used by result cards. Default: 2 CAs at 15 marks each and a 70-mark exam.</small>
+          <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentConfig()" style="margin-top:12px">Save mark structure</button>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:0">
+        <div class="tbl-head"><h3>Senior Secondary departments</h3></div>
+        <div style="padding:16px">
+          <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:10px">SS1, SS2 and SS3 are always available. Turn on only the departments used by the school; the selected departments will appear after opening each SS class.</p>
+          <div id="secondary-department-toggles"></div>
+          <button class="btn btn-outline btn-sm" type="button" onclick="saveSecondaryDepartments()" style="margin-top:12px">Save departments</button>
+        </div>
+      </div>
       <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
         <div class="tbl-head"><h3>Management access &amp; staff overview</h3></div>
         <div style="padding:16px">
@@ -2200,14 +2218,18 @@ var DEPTS={
   'jss2':        {label:'JSS 2',         subjects:JSS_CORE.slice()},
   'jss3':        {label:'JSS 3',         subjects:JSS_CORE.slice()},
   'ss1-general': {label:'SS1 - General', subjects:CORE.concat(['Biology','Physics','Chemistry','Literature','Government','I.R.S','Financial Accounting','Commerce','Geography','Agricultural Science'])},
+  'ss1-science': {label:'SS1 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Geography'])},
+  'ss1-arts':    {label:'SS1 - Arts', subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
+  'ss1-business':{label:'SS1 - Commercial', subjects:CORE.concat(['Financial Accounting','Commerce','Government'])},
   'ss2-science': {label:'SS2 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Livestock Farming','Geography'])},
   'ss2-arts':    {label:'SS2 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
   'ss2-business':{label:'SS2 - Business',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])},
   'ss3-science': {label:'SS3 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Livestock Farming','Geography'])},
-  'ss3-arts':    {label:'SS3 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])}
+  'ss3-arts':    {label:'SS3 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
+  'ss3-business':{label:'SS3 - Commercial',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])}
 };
-var ALL_CLASSES=['creche','kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-general','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts'];
-var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-general','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts'];
+var ALL_CLASSES=['creche','kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
+var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
 var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-general'];
 var DEFAULT_PROMOTION_TARGETS={
   creche:'kg1',kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
@@ -2384,14 +2406,14 @@ function getGrade(t){
 function gc(t){return getGrade(t).c;}
 function computeTotal(sc){
   if(!sc)return'';
-  var caVals=[sc.ca1,sc.ca2,sc.ca3];
+  var assessment=getAssessmentConfig();var caVals=[sc.ca1,sc.ca2,sc.ca3].slice(0,assessment.caCount);
   var examVal=sc.exam;
   var hasCa=false;
   for(var i=0;i<caVals.length;i++)if(caVals[i]!==''&&caVals[i]!==null&&caVals[i]!==undefined)hasCa=true;
   var hasExam=examVal!==''&&examVal!==null&&examVal!==undefined;
   if(!hasCa&&!hasExam)return'';
-  var caTotal=hasCa?Math.min(30,caVals.reduce(function(a,x){return a+Number(x||0);},0)):0;
-  var examTotal=hasExam?Number(examVal||0):0;
+  var caTotal=hasCa?Math.min(assessment.caMarks.slice(0,assessment.caCount).reduce(function(a,x){return a+Number(x||0);},0),caVals.reduce(function(a,x){return a+Number(x||0);},0)):0;
+  var examTotal=hasExam?Math.min(assessment.examMark,Number(examVal||0)):0;
   return caTotal+examTotal;
 }
 function getSections(){
@@ -2788,7 +2810,7 @@ var HOME_GROUPS=[
   {grid:'hg-early',keys:['creche','kg1','kg2','nursery1','nursery2']},
   {grid:'hg-primary',keys:['primary1','primary2','primary3','primary4','primary5']},
   {grid:'hg-jss',keys:['jss1','jss2','jss3']},
-  {grid:'hg-ss',keys:['ss1-general','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts']}
+  {grid:'hg-ss',keys:['ss1','ss2','ss3']}
 ];
 
 function renderHome(){
@@ -2804,16 +2826,17 @@ function renderHome(){
     if(!el)return;
     var html='';
     group.keys.forEach(function(key){
-      var d=DEPTS[key];if(!d)return;
-      var count=(DB_STUDENTS[key]||[]).length;
-      html+='<div class="class-card" id="cc-'+key+'">'
-        +'<div class="cc-name">'+d.label+'</div>'
-        +'<div class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Tap to open')+'</div>'
-        +'</div>';
+      if(group.grid==='hg-ss'){
+        html+='<div class="class-card senior-parent-card" id="cc-'+key+'"><div class="cc-name">'+key.toUpperCase()+'</div><div class="cc-count">Open departments</div></div><div class="senior-dept-grid" id="senior-depts-'+key+'" style="display:none"></div>';
+        return;
+      }
+      var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;
+      html+='<div class="class-card" id="cc-'+key+'"><div class="cc-name">'+d.label+'</div><div class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Tap to open')+'</div></div>';
     });
     el.innerHTML=html;
     // Attach click handlers after rendering
     group.keys.forEach(function(key){
+      if(group.grid==='hg-ss'){var parent=document.getElementById('cc-'+key);if(parent)parent.onclick=function(){toggleSeniorDepartments(key);};return;}
       var card=document.getElementById('cc-'+key);
       if(card){
         card.onclick=function(){enterClass(key);};
@@ -2868,6 +2891,11 @@ function renderStaffOverview(){
   el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Review registered teachers, see their activity, promote or remove administrators, suspend access, and reset the registration invite code. Your private developer account is protected and hidden.</div>';
   loadStaffDirectory();
   loadInviteSettings();
+}
+function toggleSeniorDepartments(level){
+  var root=document.getElementById('senior-depts-'+level);if(!root)return;var isOpen=root.style.display!=='none';if(isOpen){root.style.display='none';return;}
+  var cfg=getCfg();var enabled=cfg.secondaryDepartments||{science:true,arts:true,business:true};var html='';[['science','Science'],['arts','Arts'],['business','Commercial']].forEach(function(item){if(enabled[item[0]]===false)return;var key=level+'-'+item[0];var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;html+='<div class="class-card" id="cc-'+key+'"><div class="cc-name">'+d.label+'</div><div class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Tap to open')+'</div></div>';});
+  root.innerHTML=html||'<div class="empty">No SS departments are enabled. Management can enable them in Settings.</div>';root.style.display='grid';root.style.gridTemplateColumns='repeat(auto-fit,minmax(140px,1fr))';root.style.gap='10px';root.querySelectorAll('.class-card').forEach(function(card){card.onclick=function(){enterClass(card.id.slice(3));};});
 }
 
 function staffStatusLabel(row){
@@ -3450,10 +3478,10 @@ function openSheet(idx){
     html+='<div class="sheet-row" style="background:'+(rowIdx%2===0?'#fff':'#fafafa')+'">'
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
       +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2"/>'
-      +'<input class="sc-inp" type="number" min="0" max="10" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3"/>'
-      +'<input class="sc-inp" type="number" min="0" max="70" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
       +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(total!==''?total:'--')+'</span>'
       +'<span id="sg-'+s.id+'" style="text-align:center;font-weight:700;font-size:.78rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.g||'--')+'</span>'
       +'<span id="sr-'+s.id+'" style="text-align:center;font-size:.75rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.r||'--')+'</span>'
@@ -3464,7 +3492,7 @@ function openSheet(idx){
     inp.addEventListener('input',function(){
       var sid=inp.getAttribute('data-sid');
       var field=inp.getAttribute('data-field');
-      var max=field==='exam'?70:10;
+      var assessment=getAssessmentConfig();var max=field==='exam'?assessment.examMark:(assessment.caMarks[Number(field.slice(-1))-1]||10);
       var raw=inp.value.trim()===''?null:Number(inp.value);
       if(raw!==null&&!isFinite(raw)){
         scoreStatus(sid,idx,'Save failed — not recorded','#991b1b');
@@ -4665,13 +4693,35 @@ function renderSettings(){
       +'<td><input class="inp" type="number" value="'+g.max+'" onchange="GRADE_SCALE['+i+'].max=Number(this.value)" style="width:70px;padding:5px 8px"/></td>'
       +'<td><input class="inp" value="'+g.r+'" onchange="GRADE_SCALE['+i+'].r=this.value" style="padding:5px 8px"/></td></tr>';
   }).join('');
-  renderThemePicker();renderSubjCfg();renderPromotionCfg();renderStaffOverview();
+  renderThemePicker();renderSubjCfg();renderPromotionCfg();renderAssessmentConfigFields();renderSecondaryDepartmentSettings();renderStaffOverview();
+}
+function getAssessmentConfig(){
+  var cfg=getCfg();var a=cfg.assessment||{};var count=Math.max(1,Math.min(3,Number(a.caCount||2)));var marks=Array.isArray(a.caMarks)?a.caMarks.slice(0,3):[15,15,10];
+  while(marks.length<3)marks.push(10);return{caCount:count,caMarks:marks.map(function(v){return Math.max(1,Number(v)||10);}),examMark:Math.max(1,Number(a.examMark||70))};
+}
+function renderAssessmentConfigFields(){
+  var countEl=document.getElementById('assessment-ca-count'),fields=document.getElementById('assessment-ca-fields'),exam=document.getElementById('assessment-exam-mark');if(!fields)return;
+  var a=getAssessmentConfig();if(countEl)countEl.value=String(a.caCount);if(exam)exam.value=a.examMark;
+  fields.innerHTML='';for(var i=0;i<a.caCount;i++){fields.innerHTML+='<div class="fg"><label>CA '+(i+1)+' obtainable mark</label><input class="inp assessment-ca-mark" type="number" min="1" max="100" data-ca-index="'+i+'" value="'+a.caMarks[i]+'"/></div>';}
+}
+function saveAssessmentConfig(){
+  if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change assessment marks.','error');return;}
+  var count=Math.max(1,Math.min(3,Number((document.getElementById('assessment-ca-count')||{}).value||2)));var marks=[];document.querySelectorAll('.assessment-ca-mark').forEach(function(input){marks.push(Math.max(1,Number(input.value)||10));});
+  var exam=Math.max(1,Number((document.getElementById('assessment-exam-mark')||{}).value||70));var cfg=getCfg();cfg.assessment={caCount:count,caMarks:marks,examMark:exam};saveCfg(cfg);showToast('Assessment mark structure saved.');
+}
+function renderSecondaryDepartmentSettings(){
+  var root=document.getElementById('secondary-department-toggles');if(!root)return;var cfg=getCfg();var selected=cfg.secondaryDepartments||{science:true,arts:true,business:true};
+  root.innerHTML=[['science','Science'],['arts','Arts'],['business','Commercial / Business']].map(function(item){return '<label style="display:flex;align-items:center;gap:8px;margin:9px 0;font-size:.82rem"><input type="checkbox" class="secondary-dept-toggle" data-dept="'+item[0]+'" '+(selected[item[0]]!==false?'checked':'')+'/> '+item[1]+'</label>';}).join('');
+}
+function saveSecondaryDepartments(){
+  if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change departments.','error');return;}
+  var departments={};document.querySelectorAll('.secondary-dept-toggle').forEach(function(input){departments[input.getAttribute('data-dept')]=input.checked;});var cfg=getCfg();cfg.secondaryDepartments=departments;saveCfg(cfg);renderHome();showToast('Senior Secondary departments saved.');
 }
 function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var tabs=[['all','Overview'],['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion|Assessment/.test(h)?'academic':/Management access/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion|Assessment|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=tab==='all'||c.getAttribute('data-settings-group')===tab?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
