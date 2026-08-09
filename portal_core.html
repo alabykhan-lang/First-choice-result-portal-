@@ -1087,7 +1087,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
         <div class="tbl-head"><h3>Staff access controls</h3><span id="staff-directory-status" style="font-size:.7rem;color:var(--gray)">Loading…</span></div>
         <div style="padding:16px">
-          <div id="staff-directory" class="staff-directory"><div class="empty"><p>Staff activity will appear here after the First Choice database is connected.</p></div></div>
+          <div id="staff-directory" class="staff-directory"><div class="empty"><p>No staff accounts registered yet.</p></div></div>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
@@ -2900,7 +2900,7 @@ function renderStaffOverview(){
   loadInviteSettings();
 }
 function toggleSeniorDepartments(level){
-  var title=level.toUpperCase();var root=document.getElementById('ss-department-options');var heading=document.getElementById('ss-department-title');if(!root)return;if(heading)heading.textContent=title+' department';var cfg=getCfg();var all=level==='ss1'?[['general','General'],['science','Science'],['arts','Arts'],['business','Commercial']]:[['science','Science'],['arts','Arts'],['business','Commercial']];var enabled=(cfg.secondaryDepartments||{})[level]||{};var html='';all.forEach(function(item){if(enabled[item[0]]===false)return;var key=level+'-'+item[0];var d=DEPTS[key];if(!d)return;var count=(DB_STUDENTS[key]||[]).length;html+='<button class="class-card" type="button" style="text-align:left" onclick="closeModal(\'modal-ss-departments\');enterClass(\''+key+'\')"><span class="cc-name">'+d.label+'</span><span class="cc-count">'+(count?count+' student'+(count===1?'':'s'):'Open class')+'</span></button>';});root.innerHTML=html||'<div class="empty">No departments are enabled. Management can enable them in Settings.</div>';document.getElementById('modal-ss-departments').style.display='flex';
+  var title=level.toUpperCase();var root=document.getElementById('ss-department-options');var heading=document.getElementById('ss-department-title');if(!root)return;if(heading)heading.textContent=title+' department';var cfg=getCfg();var all=level==='ss1'?[['general','General'],['science','Science'],['arts','Arts'],['business','Commercial']]:[['science','Science'],['arts','Arts'],['business','Commercial']];var enabled=(cfg.secondaryDepartments||{})[level]||{};var html='';all.forEach(function(item){if(enabled[item[0]]===false)return;var key=level+'-'+item[0];var d=DEPTS[key];if(!d)return;html+='<button class="class-card" type="button" style="text-align:left" onclick="closeModal(\'modal-ss-departments\');enterClass(\''+key+'\')"><span class="cc-name">'+d.label+'</span></button>';});root.innerHTML=html||'<div class="empty">No departments are enabled. Management can enable them in Settings.</div>';document.getElementById('modal-ss-departments').style.display='flex';
 }
 
 function staffStatusLabel(row){
@@ -2915,7 +2915,7 @@ function staffSeenLabel(row){
 }
 function loadStaffDirectory(){
   var el=document.getElementById('staff-directory'),status=document.getElementById('staff-directory-status');if(!el)return;
-  if(!hasResultPermission('management.review')){el.innerHTML='';return;}
+  if(!hasResultPermission('management.review')){if(status)status.textContent='Permission required';el.innerHTML='<div class="staff-access-note">Management review permission is not available for this account. Sign in with the school administrator account to view staff activity.</div>';return;}
   if(status)status.textContent='Loading…';
   resultDataRequest('management.staff.list',{}).then(function(payload){
     var rows=Array.isArray(payload.staff)?payload.staff:[];
@@ -2928,7 +2928,7 @@ function loadStaffDirectory(){
     }).join('');
   }).catch(function(error){
     if(status)status.textContent='Unavailable';
-    el.innerHTML='<div class="staff-access-note">Staff directory is unavailable until the First Choice management tables are installed.</div>';
+    el.innerHTML='<div class="staff-access-note"><strong>Staff directory could not be loaded.</strong><br>Check the signed-in management account and refresh this overview.</div>';
   });
 }
 function updateStaffMember(id,role,suspended){
@@ -4726,7 +4726,7 @@ function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var tabs=[['all','Overview'],['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion|Assessment|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(/Promotion thresholds|Assessment scope|Senior Secondary departments/.test(h)){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'all';card.setAttribute('data-settings-group',g);});showSettingsTab('all');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=tab==='all'||c.getAttribute('data-settings-group')===tab?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
