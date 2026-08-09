@@ -1077,10 +1077,10 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div style="padding:16px">
           <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:12px">Control whether new staff can register and change the invitation code used on the registration screen.</p>
           <div class="settings-grid" style="gap:12px">
-            <div class="fg"><label for="invite-code-setting">Invite code</label><input class="inp" id="invite-code-setting" type="text" autocomplete="off" placeholder="Enter a new invite code"/></div>
+            <div class="fg"><label for="invite-code-setting">Invite code</label><input class="inp" id="invite-code-setting" type="text" autocomplete="off" placeholder="Enter a new invite code"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Current default: <strong>AMB ADIGUN</strong> (spaces are optional).</small></div>
             <div class="fg"><label for="invite-enabled-setting">Registration access</label><select class="sel" id="invite-enabled-setting"><option value="true">Enabled</option><option value="false">Paused</option></select></div>
           </div>
-          <div class="context-manager-row"><small id="invite-link-preview">Registration invite is managed by the school administrator.</small><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div>
+          <div class="context-manager-row"><small id="invite-link-preview">Current invite code: AMB ADIGUN · Registration is enabled.</small><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" type="button" onclick="resetInviteCode()">Reset to AMB ADIGUN</button><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div></div>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
@@ -1594,43 +1594,14 @@ function loginSuccess(user,mode){
 }
 
 function restorePortalPageAfterLogin(){
-  var _pg=null,_cls=null,_trm=null,_ses=null;
-  try{
-    _pg=sessionStorage.getItem('wts_page');
-    _cls=sessionStorage.getItem('wts_cls');
-    _trm=sessionStorage.getItem('wts_term');
-    _ses=sessionStorage.getItem('wts_session');
-  }catch(e){}
-  if(_pg&&_pg!=='home'&&_cls&&_trm&&DEPTS[_cls]){
-    var selectedSession=String(_ses||getCfg().session||DEFAULT_SESSION).trim();
-    CLS=_cls;
-    TERM=_trm;
-    SELECTED_SESSION=selectedSession;
-    CONTEXT_EXPLICIT=true;
-    CONTEXT_READ_ONLY=!isOfficialOpenContext(selectedSession,TERM);
-    setResultContext(CLS,selectedSession,TERM).then(function(){
-      persistSelectedContext();
-      setMode(true);
-      return loadClass(CLS);
-    }).then(function(){
-      var _ni=document.getElementById('ni-'+_pg)||document.getElementById('ni-dashboard');
-      navTo(_pg,_ni);
-    }).catch(function(error){
-      CONTEXT_EXPLICIT=false;
-      SELECTED_SESSION=null;
-      CLS='ss3-science';
-      TERM=String(window._activeServerTerm||getCfg().term||DEFAULT_TERM);
-      setMode(false);
-      renderHome();
-      showToast(resultContextMessage(error),'error');
-    });
-  }else{
-    CONTEXT_EXPLICIT=false;
-    SELECTED_SESSION=null;
-    CONTEXT_READ_ONLY=false;
-    setMode(false);
-    renderHome();
-  }
+  // A browser refresh always returns staff to the safe Home landing page.
+  // Class/term state is selected explicitly by the user, never restored as a stale page.
+  try{['wts_page','wts_cls','wts_term','wts_session'].forEach(function(key){sessionStorage.removeItem(key);});}catch(e){}
+  CONTEXT_EXPLICIT=false;
+  SELECTED_SESSION=null;
+  CONTEXT_READ_ONLY=false;
+  setMode(false);
+  navTo('home',document.getElementById('ni-home'));
 }
 
 function doLogout(){
@@ -2916,7 +2887,7 @@ function loadStaffDirectory(){
   resultDataRequest('management.staff.list',{}).then(function(payload){
     var rows=Array.isArray(payload.staff)?payload.staff:[];
     if(status)status.textContent=rows.length+' staff account'+(rows.length===1?'':'s');
-    if(!rows.length){el.innerHTML='<div class="empty"><h3>No staff activity yet</h3><p>Registered First Choice staff will appear here after their first sign-in.</p></div>';return;}
+    if(!rows.length){el.innerHTML='<div class="empty"><h3>0 staff accounts registered</h3><p>No teachers or staff have registered yet. New registrations will appear here after their first sign-in.</p></div>';return;}
     el.innerHTML=rows.map(function(row){
       var display=row.display_name||row.email||'First Choice staff';
       var role=row.role==='admin'?'Admin':'Staff';
@@ -2934,12 +2905,17 @@ function updateStaffMember(id,role,suspended){
 function loadInviteSettings(){
   var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting'),preview=document.getElementById('invite-link-preview');
   if(!code||!enabled)return;
-  resultDataRequest('management.invite.read',{}).then(function(payload){var invite=payload.invite||{};enabled.value=invite.invite_enabled===false?'false':'true';preview.textContent='Current invite: '+(invite.invite_hint||'Configured')+'. Leave the code blank to keep it unchanged.';}).catch(function(){preview.textContent='Invite settings will be available after the management tables are installed.';});
+  resultDataRequest('management.invite.read',{}).then(function(payload){var invite=payload.invite||{};enabled.value=invite.invite_enabled===false?'false':'true';preview.textContent='Current invite code: AMB ADIGUN · '+(invite.invite_enabled===false?'Registration is paused.':'Registration is enabled.');}).catch(function(){preview.textContent='Current invite code: AMB ADIGUN · Unable to read live status.';});
+}
+function resetInviteCode(){
+  if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
+  var code=document.getElementById('invite-code-setting');if(code)code.value='AMBADIGUN';
+  var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Reset ready: AMB ADIGUN · Click Save invite settings to apply it.';
 }
 function saveInviteSettings(){
   if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
   var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting');
-  resultDataRequest('management.invite.update',{invite_code:code?code.value.trim():'',invite_enabled:enabled?enabled.value==='true':true}).then(function(payload){if(code)code.value='';var invite=payload.invite||{};var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Current invite: '+(invite.invite_hint||'Updated')+'. Leave the code blank to keep it unchanged.';showToast('Invite settings saved.');}).catch(function(error){showToast((error&&error.message)||'Invite settings could not be saved.','error');});
+  resultDataRequest('management.invite.update',{invite_code:code?code.value.trim():'',invite_enabled:enabled?enabled.value==='true':true}).then(function(){var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Current invite code: AMB ADIGUN · '+(enabled&&enabled.value==='true'?'Registration is enabled.':'Registration is paused.');showToast('Invite settings saved.');}).catch(function(error){showToast((error&&error.message)||'Invite settings could not be saved.','error');});
 }
 
 // ============================================================
