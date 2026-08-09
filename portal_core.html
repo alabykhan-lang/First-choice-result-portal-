@@ -989,7 +989,7 @@ body.result-context-read-only .results-history-readable{display:flex}
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="settings-hero"><div><span class="settings-kicker">PORTAL CONTROL CENTER</span><h2>Settings dashboard</h2><p>Manage identity, academic cycles, bills, report cards and subjects from focused sections.</p></div><div class="settings-hero-badge"><span class="dot"></span> Continuous academic system</div></div>
+    <div class="settings-hero"><div><span class="settings-kicker">PORTAL CONTROL CENTER</span><h2>Settings dashboard</h2><p>Manage identity, academic cycles, bills, report cards and subjects from focused sections.</p></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><div class="settings-hero-badge"><span class="dot"></span> Continuous academic system</div><button class="btn btn-gold btn-sm" type="button" onclick="openDemoTools()">&#9881; Demo testing</button></div></div>
     <div class="settings-layout">
     <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections"></aside>
     <div class="settings-grid">
@@ -3376,6 +3376,7 @@ function clearDemoData(){
   if(!confirm('Remove all pupils whose names begin with “Demo Pupil -” and their scores/fees?'))return;showLoad('Removing demo data...');
   resultDataRequest('demo.clear',{prefix:'Demo Pupil -'}).then(function(){Object.keys(DB_STUDENTS).forEach(function(key){DB_STUDENTS[key]=(DB_STUDENTS[key]||[]).filter(function(s){return !/^Demo Pupil -/i.test(s.name||'');});});DB_SCORES={};DB_FEES={};var state=localResultState();['students','scores','fees'].forEach(function(resource){state[resource]=(state[resource]||[]).filter(function(row){return !/^Demo Pupil -/i.test(row.name||'');});});saveLocalResultState(state);hideLoad();var status=document.getElementById('demo-data-status');if(status)status.textContent='Demo data cleared. Real pupil records were not changed.';showToast('Demo data cleared.');renderHome();renderStudents();renderDash();}).catch(function(error){hideLoad();showToast('Demo data could not be cleared: '+(error.message||error.code||'database error'),'error');});
 }
+function openDemoTools(){var card=document.getElementById('demo-tools-card');if(!card)return;showSettingsTab('all');setTimeout(function(){card.scrollIntoView({behavior:'smooth',block:'center'});},30);}
 function deleteStu(id){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   if(!confirm('Delete this student and all their records?'))return;
