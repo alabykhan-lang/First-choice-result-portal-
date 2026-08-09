@@ -801,10 +801,13 @@ body.result-context-read-only .results-history-readable{display:flex}
   <div class="tbl-wrap">
       <div class="tbl-head">
         <h3>Student Roster</h3>
-        <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openBulkStudentImport()">&#128196; Add many / Scan names</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+        </div>
       </div>
       <table class="data-table">
-        <thead><tr><th>#</th><th>Full Name</th><th>Gender</th><th>Reg. No.</th><th>House</th><th>Photo</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Full Name</th><th>Gender</th><th>Photo</th><th>Actions</th></tr></thead>
         <tbody id="stu-tbody"></tbody>
       </table>
     </div>
@@ -1062,7 +1065,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>Continuous assessment &amp; exam marks</h3></div>
         <div style="padding:16px">
-          <div class="fg"><label>Number of CA entries per term</label><select class="sel" id="assessment-ca-count" onchange="renderAssessmentConfigFields()"><option value="1">1 CA</option><option value="2">2 CAs</option><option value="3">3 CAs</option></select></div>
+          <div class="fg"><label>Number of CA entries per term</label><div id="assessment-ca-toggle" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div><select class="sel" id="assessment-ca-count" onchange="renderAssessmentConfigFields()" style="display:none"><option value="1">1 CA</option><option value="2">2 CAs</option><option value="3">3 CAs</option></select></div>
           <div id="assessment-ca-fields" class="fg-row" style="margin-top:10px"></div>
           <div class="fg" style="margin-top:10px"><label>Exam obtainable mark</label><input class="inp" type="number" min="1" max="100" id="assessment-exam-mark"/></div>
           <small style="display:block;color:var(--gray);font-size:.72rem;margin-top:8px">These marks control score-entry limits and the total used by result cards. Default: 2 CAs at 15 marks each and a 70-mark exam.</small>
@@ -1265,7 +1268,7 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:420px">
             <thead>
-              <tr style="background:var(--g1);color:#fff">
+              <tr id="ocr-table-header" style="background:var(--g1);color:#fff">
                 <th style="padding:8px 10px;text-align:left">Name in Book</th>
                 <th style="padding:8px 10px;text-align:left">System Match</th>
                 <th style="padding:8px;text-align:center">CA1</th>
@@ -1295,13 +1298,9 @@ body.result-context-read-only .results-history-readable{display:flex}
       <input type="hidden" id="edit-id"/>
       <div class="fg-row">
         <div class="fg"><label>Full Name *</label><input class="inp" id="in-name" placeholder="Full name"/></div>
-        <div class="fg"><label>Reg / Adm No.</label><input class="inp" id="in-admno" placeholder="e.g. FCSS/SS3/001"/></div>
-      </div>
-      <div class="fg-row">
         <div class="fg"><label>Gender *</label>
           <select class="sel" id="in-gender"><option value="">Select</option><option>Male</option><option>Female</option></select>
         </div>
-        <div class="fg"><label>House</label><input class="inp" id="in-house" placeholder="e.g. Red House"/></div>
       </div>
       <div class="fg-row">
         <div class="fg"><label>Age</label><input class="inp" id="in-age" type="number" placeholder="e.g. 17"/></div>
@@ -1326,6 +1325,27 @@ body.result-context-read-only .results-history-readable{display:flex}
       <button class="btn btn-outline" onclick="closeModal('modal-stu')">Cancel</button>
       <button class="btn btn-primary" onclick="saveStu()">Save Student</button>
     </div>
+  </div>
+</div>
+
+<!-- BULK STUDENT IMPORT MODAL -->
+<div class="overlay" id="modal-bulk-students" style="display:none">
+  <div class="modal" style="max-width:620px;max-height:90vh;overflow-y:auto">
+    <div class="modal-hdr"><h3>&#128196; Add multiple students</h3><button class="modal-x" onclick="closeModal('modal-bulk-students')">&#215;</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--gray);line-height:1.45">Add 5–30 students at once. Paste one name per line, or scan a clear class list/record page to extract names. Registration numbers are generated automatically.</p>
+      <div class="fg-row">
+        <div class="fg"><label>Default gender</label><select class="sel" id="bulk-gender"><option>Not specified</option><option>Male</option><option>Female</option></select></div>
+        <div class="fg"><label>Optional age</label><input class="inp" id="bulk-age" type="number" placeholder="Leave blank if unknown"/></div>
+      </div>
+      <div class="fg"><label>Student names</label><textarea class="inp" id="bulk-student-names" rows="10" oninput="updateBulkStudentCount()" placeholder="One student name per line"></textarea></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-gold btn-sm" type="button" onclick="openStudentNameOCR()">&#128247; Scan names from image</button>
+        <span id="bulk-count" style="font-size:.75rem;color:var(--gray);align-self:center">0 names</span>
+      </div>
+      <input type="file" id="student-name-ocr-file" accept="image/*" style="display:none" onchange="runStudentNameOCR(event)"/>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-bulk-students')">Cancel</button><button class="btn btn-primary" onclick="saveBulkStudents()">Save students</button></div>
   </div>
 </div>
 
@@ -3182,7 +3202,7 @@ function renderStudents(){
   var students=DB_STUDENTS[CLS]||[];
   var tbody=document.getElementById('stu-tbody');
   if(!students.length){
-    tbody.innerHTML='<tr><td colspan="7"><div class="empty"><h3>No Students</h3><p>Add students to get started</p></div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="5"><div class="empty"><h3>No Students</h3><p>Add students to get started</p></div></td></tr>';
     return;
   }
   tbody.innerHTML=students.map(function(s,i){
@@ -3190,8 +3210,6 @@ function renderStudents(){
       +'<td><strong>'+(i+1)+'</strong></td>'
       +'<td><strong>'+s.name+'</strong></td>'
       +'<td><span class="badge '+(s.gender==='Male'?'badge-blue':'badge-gold')+'">'+s.gender+'</span></td>'
-      +'<td>'+(s.admno||'--')+'</td>'
-      +'<td>'+(s.house||'--')+'</td>'
       +'<td>'+(s.photo?'<img src="'+s.photo+'" style="width:30px;height:36px;object-fit:cover;border-radius:4px"/>':'--')+'</td>'
       +'<td style="display:flex;gap:6px">'
       +'<button class="btn btn-outline btn-xs" data-edit="'+s.id+'">Edit</button>'
@@ -3211,7 +3229,7 @@ function openAddStudent(){
   photoDataURL='';
   document.getElementById('modal-title').textContent='Add Student';
   document.getElementById('edit-id').value='';
-  ['name','admno','house','age'].forEach(function(f){document.getElementById('in-'+f).value='';});
+  ['name','age'].forEach(function(f){document.getElementById('in-'+f).value='';});
   document.getElementById('in-gender').value='';
   document.getElementById('photo-preview').innerHTML='<span style="font-size:1.5rem">&#128247;</span><span style="font-size:.6rem">No photo</span>';
   document.getElementById('clear-photo-btn').style.display='none';
@@ -3224,9 +3242,7 @@ function openEditStu(id){
   document.getElementById('modal-title').textContent='Edit Student';
   document.getElementById('edit-id').value=id;
   document.getElementById('in-name').value=s.name;
-  document.getElementById('in-admno').value=s.admno||'';
   document.getElementById('in-gender').value=s.gender;
-  document.getElementById('in-house').value=s.house||'';
   document.getElementById('in-age').value=s.age||'';
   photoDataURL=s.photo||'';
   var pp=document.getElementById('photo-preview');
@@ -3278,10 +3294,9 @@ function saveStu(){
   var gender=document.getElementById('in-gender').value;
   if(!name||!gender){alert('Name and gender required.');return;}
   var eid=document.getElementById('edit-id').value;
-  var suppliedAdmno=document.getElementById('in-admno').value.trim();
   var obj={name:name,gender:gender,
-    admno:suppliedAdmno||(!eid?generateAdmissionNumber():''),
-    house:document.getElementById('in-house').value.trim(),
+    admno:eid?((DB_STUDENTS[CLS]||[]).find(function(x){return x.id===eid;})||{}).admno||generateAdmissionNumber():generateAdmissionNumber(),
+    house:null,
     age:document.getElementById('in-age').value,
     photo:photoDataURL};
   showLoad('Saving...');
@@ -3312,6 +3327,31 @@ function saveStu(){
   }
   hideLoad();
   showToast('Management access is required for student administration.','error');
+}
+function openBulkStudentImport(){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
+  document.getElementById('bulk-student-names').value='';document.getElementById('bulk-gender').value='Not specified';document.getElementById('bulk-age').value='';updateBulkStudentCount();document.getElementById('modal-bulk-students').style.display='flex';
+}
+function updateBulkStudentCount(){var el=document.getElementById('bulk-student-names');var count=el?(el.value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).length):0;var out=document.getElementById('bulk-count');if(out)out.textContent=count+' name'+(count===1?'':'s')+(count>30?' (maximum 30)':'');}
+function openStudentNameOCR(){
+  if(!getGeminiKey()){showToast('Add Gemini API key in Settings first','error');return;}
+  var input=document.getElementById('student-name-ocr-file');if(input)input.click();
+}
+function runStudentNameOCR(evt){
+  var file=evt.target.files&&evt.target.files[0];if(!file)return;var key=getGeminiKey();var reader=new FileReader();
+  reader.onload=function(e){var src=e.target.result||'';var parts=src.split(',');var mime=file.type||'image/jpeg';var prompt='Read every student name from this school class list or record-book image. Return a JSON array only, with one object per visible student: {"name":"FULL NAME"}. Do not include serial numbers, headings, totals, or other text.';showLoad('Reading student names...');
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime,data:parts[1]||src}}]}],generationConfig:{temperature:0.1,maxOutputTokens:2048}})})
+      .then(function(r){if(!r.ok)return r.json().then(function(x){throw new Error(x.error?x.error.message:'HTTP '+r.status);});return r.json();})
+      .then(function(data){var txt=data.candidates&&data.candidates[0]&&data.candidates[0].content.parts[0].text||'';var match=txt.match(/\[[\s\S]*\]/);if(!match)throw new Error('No names found');var rows=JSON.parse(match[0]);var names=rows.map(function(x){return typeof x==='string'?x:x.name;}).filter(Boolean);var box=document.getElementById('bulk-student-names');var current=box.value.trim();box.value=(current?current+'\n':'')+names.join('\n');updateBulkStudentCount();hideLoad();showToast(names.length+' student names extracted. Review before saving.');})
+      .catch(function(err){hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
+      .finally(function(){evt.target.value='';});
+  };reader.readAsDataURL(file);
+}
+function saveBulkStudents(){
+  if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
+  var box=document.getElementById('bulk-student-names');var names=(box.value||'').split(/\r?\n/).map(function(x){return x.trim().replace(/^\d+[.)-]\s*/,'');}).filter(Boolean);var unique=[];var seen={};names.forEach(function(n){var key=normName(n);if(key&&!seen[key]){seen[key]=true;unique.push(n);}});if(!unique.length){showToast('Add at least one student name.','error');return;}if(unique.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}if(!isCentralAuth()){showToast('Management access is required for student administration.','error');return;}
+  var gender=document.getElementById('bulk-gender').value||'Not specified',age=document.getElementById('bulk-age').value||'';var rows=[];unique.forEach(function(name){rows.push({name:name,gender:gender,admno:generateAdmissionNumber(),house:null,age:age,photo:''});DB_STUDENTS[CLS]=DB_STUDENTS[CLS]||[];DB_STUDENTS[CLS].push(rows[rows.length-1]);});showLoad('Saving '+rows.length+' students...');
+  Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}}).catch(function(error){if(!canUseLocalPortalFallback(error))throw error;localUpsertResultRow('students',Object.assign({class_key:dbClassKey(CLS),archived:false,created_at:new Date().toISOString()},obj),['id']);} )})).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
 }
 function deleteStu(id){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
@@ -4707,9 +4747,11 @@ function assessmentCaTotal(sc){
 }
 function renderAssessmentConfigFields(){
   var countEl=document.getElementById('assessment-ca-count'),fields=document.getElementById('assessment-ca-fields'),exam=document.getElementById('assessment-exam-mark');if(!fields)return;
-  var a=getAssessmentConfig();if(countEl)countEl.value=String(a.caCount);if(exam)exam.value=a.examMark;
-  fields.innerHTML='';for(var i=0;i<a.caCount;i++){fields.innerHTML+='<div class="fg"><label>CA '+(i+1)+' obtainable mark</label><input class="inp assessment-ca-mark" type="number" min="1" max="100" data-ca-index="'+i+'" value="'+a.caMarks[i]+'"/></div>';}
+  var a=getAssessmentConfig();var selected=countEl&&countEl.value?Math.max(1,Math.min(3,Number(countEl.value))):a.caCount;if(countEl)countEl.value=String(selected);if(exam&&document.activeElement!==exam)exam.value=a.examMark;
+  var toggle=document.getElementById('assessment-ca-toggle');if(toggle)toggle.innerHTML=[1,2,3].map(function(n){return '<button type="button" class="btn btn-sm '+(selected===n?'btn-primary':'btn-outline')+'" onclick="setAssessmentCaCount('+n+')">'+n+' CA'+(n===1?'':'s')+'</button>';}).join('');
+  fields.innerHTML='';for(var i=0;i<selected;i++){fields.innerHTML+='<div class="fg"><label>CA '+(i+1)+' obtainable mark</label><input class="inp assessment-ca-mark" type="number" min="1" max="100" data-ca-index="'+i+'" value="'+(a.caMarks[i]||10)+'"/></div>';}
 }
+function setAssessmentCaCount(count){var el=document.getElementById('assessment-ca-count');if(el)el.value=String(count);renderAssessmentConfigFields();}
 function saveAssessmentConfig(){
   if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change assessment marks.','error');return;}
   var count=Math.max(1,Math.min(3,Number((document.getElementById('assessment-ca-count')||{}).value||2)));var marks=[];document.querySelectorAll('.assessment-ca-mark').forEach(function(input){marks.push(Math.max(1,Number(input.value)||10));});
@@ -5062,14 +5104,14 @@ function runOCR(){
   if(!key||!OCR_IMG_B64)return;
   document.getElementById('ocr-preview-wrap').style.display='none';
   document.getElementById('ocr-loading').style.display='block';
-  var students=DB_STUDENTS[CLS]||[];
+  var students=DB_STUDENTS[CLS]||[];var assessment=getAssessmentConfig();var caDescription=assessment.caMarks.slice(0,assessment.caCount).map(function(mark,i){return 'CA'+(i+1)+' (out of '+mark+')';}).join(', ');
   var names=students.map(function(s){return s.name;}).join(', ');
   var prompt='You are reading a handwritten Nigerian school record book. '
-    +'The page has columns: Serial Number, Student Name, CA1 (out of 10), CA2 (out of 10), CA3 (out of 10), Exam (out of 70). '
+    +'The page has columns: Serial Number, Student Name, '+caDescription+', Exam (out of '+assessment.examMark+'). '
     +'Read every row carefully including handwritten names and numbers. '
     +'These are the registered student names to help you decode handwriting: '+names+'. '
     +'Return a JSON array only - no other text, no markdown, no code fences. '
-    +'Each item must be: {"name":"STUDENT FULL NAME AS WRITTEN","ca1":number_or_null,"ca2":number_or_null,"ca3":number_or_null,"exam":number_or_null} '
+    +'Each item must be: {"name":"STUDENT FULL NAME AS WRITTEN",'+assessment.caMarks.slice(0,assessment.caCount).map(function(_,i){return '"ca'+(i+1)+'":number_or_null';}).join(',')+',"exam":number_or_null} '
     +'If a score cell is empty, crossed out, or unreadable use null. '
     +'Include every student row visible. Start your response with [ and end with ].';
   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{
@@ -5146,6 +5188,7 @@ function nameScore(a,b){
 }
 
 function buildOCRPreview(rows,students){
+  var assessment=getAssessmentConfig();var head=document.getElementById('ocr-table-header');if(head){head.innerHTML='<th style="padding:8px 10px;text-align:left">Name in Book</th><th style="padding:8px 10px;text-align:left">System Match</th>'+assessment.caMarks.slice(0,assessment.caCount).map(function(mark,i){return '<th style="padding:8px;text-align:center">CA'+(i+1)+' / '+mark+'</th>';}).join('')+'<th style="padding:8px;text-align:center">Exam / '+assessment.examMark+'</th>';}
   OCR_MATCHES=rows.map(function(row){
     var best=null,top=0;
     students.forEach(function(s){var sc=nameScore(row.name,s.name);if(sc>top){top=sc;best=s;}});
@@ -5167,10 +5210,8 @@ function buildOCRPreview(rows,students){
     html+='<tr style="background:'+bg+'">'
       +'<td style="padding:7px 10px"><span style="width:8px;height:8px;background:'+dot+';border-radius:50%;display:inline-block;margin-right:5px"></span>'+m.bookName+'</td>'
       +'<td style="padding:7px 10px;font-weight:600">'+mn+'</td>'
-      +'<td style="padding:5px;text-align:center">'+inp(m.ca1,'ca1',10)+'</td>'
-      +'<td style="padding:5px;text-align:center">'+inp(m.ca2,'ca2',10)+'</td>'
-      +'<td style="padding:5px;text-align:center">'+inp(m.ca3,'ca3',10)+'</td>'
-      +'<td style="padding:5px;text-align:center">'+inp(m.exam,'exam',70)+'</td>'
+      +assessment.caMarks.slice(0,assessment.caCount).map(function(mark,ci){return '<td style="padding:5px;text-align:center">'+inp(m['ca'+(ci+1)],'ca'+(ci+1),mark)+'</td>';}).join('')
+      +'<td style="padding:5px;text-align:center">'+inp(m.exam,'exam',assessment.examMark)+'</td>'
       +'</tr>';
   }
   tbody.innerHTML=html;
@@ -5185,6 +5226,7 @@ function updateOCRMatch(el){
 }
 
 function applyOCRScores(){
+  var assessment=getAssessmentConfig();
   var applied=0;
   OCR_MATCHES.forEach(function(m){
     if(!m.student)return;
@@ -5192,10 +5234,8 @@ function applyOCRScores(){
     var idx=OCR_IDX;
     if(!DB_SCORES[sid])DB_SCORES[sid]={};
     if(!DB_SCORES[sid][idx])DB_SCORES[sid][idx]={ca1:'',ca2:'',ca3:'',exam:''};
-    if(m.ca1!=null)DB_SCORES[sid][idx].ca1=Math.min(10,Math.max(0,parseFloat(m.ca1)||0));
-    if(m.ca2!=null)DB_SCORES[sid][idx].ca2=Math.min(10,Math.max(0,parseFloat(m.ca2)||0));
-    if(m.ca3!=null)DB_SCORES[sid][idx].ca3=Math.min(10,Math.max(0,parseFloat(m.ca3)||0));
-    if(m.exam!=null)DB_SCORES[sid][idx].exam=Math.min(70,Math.max(0,parseFloat(m.exam)||0));
+    assessment.caMarks.slice(0,assessment.caCount).forEach(function(mark,ci){var field='ca'+(ci+1);if(m[field]!=null)DB_SCORES[sid][idx][field]=Math.min(mark,Math.max(0,parseFloat(m[field])||0));});
+    if(m.exam!=null)DB_SCORES[sid][idx].exam=Math.min(assessment.examMark,Math.max(0,parseFloat(m.exam)||0));
     applied++;
   });
   var students=DB_STUDENTS[CLS]||[];
