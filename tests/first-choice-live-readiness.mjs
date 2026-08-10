@@ -38,6 +38,9 @@ check('safe next-term activation path',
 check('explicit result unpublish handling',
   /action === 'results\.unpublish'/.test(dataApi) && /RESULT_ACTION_NOT_SUPPORTED/.test(dataApi),
   'unpublish is implemented explicitly and unknown actions are rejected');
+check('report-card actions are supported',
+  /NON_PERSISTENT_ACTIONS/.test(dataApi) && /report_cards\.generate/.test(dataApi) && /results\.export/.test(dataApi),
+  'card generation and export validation calls are explicit non-writing actions');
 check('score writes require a returned row',
   /RESULT_SCORE_SAVE_FAILED/.test(dataApi) && /if \(!rows\?\.\[0\]\)/.test(dataApi),
   'the API rejects empty update responses instead of reporting an old score as saved');

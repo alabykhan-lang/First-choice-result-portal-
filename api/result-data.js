@@ -14,6 +14,10 @@ const crypto = require('node:crypto');
 const READ_RESOURCES = new Set([
   'classes', 'subjects', 'students', 'scores', 'traits', 'remarks', 'fees', 'published_subjects',
 ]);
+const NON_PERSISTENT_ACTIONS = new Set([
+  'report_cards.generate',
+  'results.export',
+]);
 const DEVELOPER_EMAIL = 'alabykhan@gmail.com';
 const SCHOOL_ADMIN_EMAIL = 'amb.adigun002@gmail.com';
 
@@ -141,6 +145,7 @@ function unsupportedAction() {
 }
 
 async function handleAction(action, payload, token) {
+  if (NON_PERSISTENT_ACTIONS.has(action)) return { ok: true, read_only: true };
   if (action === 'management.staff.list') {
     await requireManagement(token);
     const rows = await supabaseRest('staff_profiles?is_developer=eq.false&order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
