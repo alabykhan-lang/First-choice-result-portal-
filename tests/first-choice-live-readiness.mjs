@@ -38,6 +38,12 @@ check('safe next-term activation path',
 check('explicit result unpublish handling',
   /action === 'results\.unpublish'/.test(dataApi) && /RESULT_ACTION_NOT_SUPPORTED/.test(dataApi),
   'unpublish is implemented explicitly and unknown actions are rejected');
+check('score writes require a returned row',
+  /RESULT_SCORE_SAVE_FAILED/.test(dataApi) && /if \(!rows\?\.\[0\]\)/.test(dataApi),
+  'the API rejects empty update responses instead of reporting an old score as saved');
+check('teacher result-write policies',
+  /Signed-in staff can insert results/.test(await fs.readFile(new URL('docs/first-choice-supabase-bootstrap.sql', root), 'utf8')) && /Signed-in staff can update results/.test(await fs.readFile(new URL('docs/first-choice-supabase-bootstrap.sql', root), 'utf8')),
+  'the bootstrap grants classroom write access while keeping management settings protected');
 check('idempotent labelled demo loader',
   /read\.students/.test(portal) && /No duplicate pupils were created/.test(portal),
   're-running the demo loader does not create another copy of the labelled pupils');

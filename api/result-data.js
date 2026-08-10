@@ -265,9 +265,20 @@ async function handleAction(action, payload, token) {
         prefer: 'return=representation',
         body: scoreBody,
       }, token);
-      return { ok: true, persisted: true, score: rows?.[0] || existing[0] };
+      if (!rows?.[0]) {
+        const error = new Error('The score update was not recorded.');
+        error.payload = { code: 'RESULT_SCORE_SAVE_FAILED', message: error.message };
+        throw error;
+      }
+      return { ok: true, persisted: true, score: rows[0] };
     }
-    return { ok: true, persisted: true, score: await upsert('scores', scoreBody, token) };
+    const score = await upsert('scores', scoreBody, token);
+    if (!score) {
+      const error = new Error('The score was not recorded.');
+      error.payload = { code: 'RESULT_SCORE_SAVE_FAILED', message: error.message };
+      throw error;
+    }
+    return { ok: true, persisted: true, score };
   }
   if (action === 'traits.enter') {
     return { ok: true, trait: await upsert('traits', payload, token) };

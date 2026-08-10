@@ -212,19 +212,53 @@ grant select on public.portal_access_config to anon;
 grant select, insert, update on public.staff_profiles to authenticated;
 grant select on public.staff_profiles to authenticated;
 
--- Result records are readable by signed-in staff; management-only writes are
--- enforced at the database boundary as well as in the portal API.
+-- Result records are readable by signed-in staff. Teachers can save the
+-- classroom records they work on; management-only writes remain enforced for
+-- configuration, fees, and the official academic context.
 do $$
 declare table_name text;
 begin
-  foreach table_name in array array['students','scores','traits','fees','remarks','published_subjects'] loop
+  foreach table_name in array array['students','scores','traits','remarks'] loop
     execute format('drop policy if exists "First Choice authenticated access" on public.%I', table_name);
+    execute format('drop policy if exists "Management can insert results" on public.%I', table_name);
+    execute format('drop policy if exists "Management can update results" on public.%I', table_name);
+    execute format('drop policy if exists "Management can delete results" on public.%I', table_name);
     execute format('create policy "Signed-in staff can read results" on public.%I for select to authenticated using (true)', table_name);
-    execute format('create policy "Management can insert results" on public.%I for insert to authenticated with check ((select private.is_management()))', table_name);
-    execute format('create policy "Management can update results" on public.%I for update to authenticated using ((select private.is_management())) with check ((select private.is_management()))', table_name);
+    execute format('create policy "Signed-in staff can insert results" on public.%I for insert to authenticated with check ((select auth.uid()) is not null)', table_name);
+    execute format('create policy "Signed-in staff can update results" on public.%I for update to authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null)', table_name);
     execute format('create policy "Management can delete results" on public.%I for delete to authenticated using ((select private.is_management()))', table_name);
   end loop;
 end $$;
+
+-- Published subjects are classroom workflow records: staff can publish or
+-- unpublish them, while only management can change settings and context.
+drop policy if exists "First Choice authenticated access" on public.published_subjects;
+drop policy if exists "Management can insert results" on public.published_subjects;
+drop policy if exists "Management can update results" on public.published_subjects;
+drop policy if exists "Management can delete results" on public.published_subjects;
+create policy "Signed-in staff can read published results" on public.published_subjects
+  for select to authenticated using (true);
+create policy "Signed-in staff can publish results" on public.published_subjects
+  for insert to authenticated with check ((select auth.uid()) is not null);
+create policy "Signed-in staff can update published results" on public.published_subjects
+  for update to authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+create policy "Signed-in staff can unpublish results" on public.published_subjects
+  for delete to authenticated using ((select auth.uid()) is not null);
+
+-- Fees remain a management-controlled schedule and should not be editable by
+-- ordinary staff accounts.
+drop policy if exists "First Choice authenticated access" on public.fees;
+drop policy if exists "Management can insert results" on public.fees;
+drop policy if exists "Management can update results" on public.fees;
+drop policy if exists "Management can delete results" on public.fees;
+create policy "Signed-in staff can read fees" on public.fees
+  for select to authenticated using (true);
+create policy "Management can insert fees" on public.fees
+  for insert to authenticated with check ((select private.is_management()));
+create policy "Management can update fees" on public.fees
+  for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+create policy "Management can delete fees" on public.fees
+  for delete to authenticated using ((select private.is_management()));
 
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;

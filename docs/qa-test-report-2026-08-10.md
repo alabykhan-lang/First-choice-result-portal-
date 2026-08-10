@@ -51,6 +51,21 @@ No cloud records were created, deleted, or changed during this run.
 - Saved grade-scale values are restored from configuration, and report-card fee visibility now follows the configured session setting.
 - Management-only guards cover app settings, academic context changes, term activation, staff actions, and invite actions.
 
+## Authenticated teacher smoke run
+
+Public email signup was rate-limited by Supabase Auth, so two auto-confirmed QA teacher users were created directly in the First Choice Supabase Authentication panel. Both now have active ordinary `staff` profiles and are not developers.
+
+The live RLS policy was corrected after the first teacher test exposed a mismatch: the portal allowed score entry, but the database allowed only management writes. Staff can now write classroom students, scores, traits and remarks, and publish/unpublish result subjects; fees, settings and the official academic context remain management-controlled.
+
+| Live check | Result |
+|---|---|
+| Primary teacher sign-in | Pass — ordinary School Staff / Result access role |
+| Secondary teacher sign-in | Pass — ordinary School Staff / Result access role |
+| Staff navigation restriction | Pass — Settings and Management access are hidden |
+| Primary 2 class entry | Pass for both teacher personas |
+| Score entry | Pass — CA1 change persisted after save and refresh with no false failure message |
+| Registered staff profiles | Pass — two active non-developer staff rows confirmed in Supabase |
+
 ## Authenticated management smoke run
 
 The owner’s signed-in developer/management session was used for a controlled smoke run. The run was not allowed to activate the next term.
@@ -73,9 +88,8 @@ The owner’s signed-in developer/management session was used for a controlled s
 
 ## Remaining run blockers and newly detected issue
 
-- Two disposable teacher registrations were attempted through the live invite flow, but Supabase Auth returned `email rate limit exceeded`. Therefore teacher-specific positive tests and cross-account synchronization are still pending; no teacher accounts were created by this run.
+- Teacher activity tracking, admin promotion/removal, and suspension were not yet positively exercised.
 - The earlier repeated demo load created duplicate `Demo Pupil - ...` records; the current Primary 2 smoke class showed six pupils. The loader is now idempotent for future runs, but those existing rows remain for owner review.
-- Because no teacher persona was available, staff restrictions, teacher activity tracking, admin promotion/removal, and suspension were not positively verified.
 
 ## Required next test pass
 
