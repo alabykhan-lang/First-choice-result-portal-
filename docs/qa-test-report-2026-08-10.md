@@ -33,6 +33,8 @@ No cloud records were created, deleted, or changed during this run.
 
 ## Release blockers and follow-up items
 
+The initial audit recorded teacher testing as pending because public signup was rate-limited. That item was completed later through two auto-confirmed QA users; see the authenticated teacher smoke run below.
+
 1. Positive cloud testing with separate teacher personas is still pending. Supabase Auth rate-limited the disposable teacher registrations, so staff restrictions, activity tracking, promotion/removal, and suspension have not been positively verified from a teacher session.
 2. The next-term path is now protected and synchronized: the API writes the configuration and official academic context together, resets the active class to the homepage fallback, and restores the previous configuration if the context write fails. It was intentionally not activated during this QA run. A database transaction/RPC would still be the strongest future guarantee.
 3. `history.*` remains a read-only placeholder and returns no historical rows; archived-history verification is therefore limited.
