@@ -49,6 +49,32 @@ No cloud records were created, deleted, or changed during this run.
 - School identity, attendance, traits, remarks, fees schedule, signature, and selected template are wired into report-card rendering.
 - The current portal has a labelled demo-data loader, but it was not run because no authenticated management test session was available.
 
+## Authenticated management smoke run
+
+The owner’s signed-in developer/management session was used for a controlled smoke run. The run was not allowed to activate the next term.
+
+| Live check | Result |
+|---|---|
+| Demo seed | Pass — 44 labelled pupils across 22 class groups, with photos, scores, published subjects, traits, fees and remarks |
+| Class entry | Pass — Primary 2 loaded with demo records |
+| Score save | Pass — edited score persisted and displayed as Saved |
+| Refresh while inside score sheet | Pass — the same subject sheet reopened and the edited score remained present |
+| Unpublish / publish | Pass — subject changed to Draft, then returned to Published |
+| SS department routing | Pass — SS1 opened General, Science, Arts and Commercial choices; SS1 Science loaded with records |
+| One-CA mode | Pass — score entry showed CA1 and Exam only |
+| Three-CA mode | Pass — score entry showed CA1, CA2, CA3 and Exam |
+| Two-CA restoration | Pass — management setting restored to the original 2-CA configuration |
+| Broadsheet | Pass — dynamic CA1/CA2 columns and saved values rendered |
+| Report card | Pass — subjects, CA1/CA2, exam, totals, traits, next-term fee schedule and remarks rendered |
+| Three templates | Pass — Alternative 1, Alternative 2 and Alternative 3 were each selected and restored to Alternative 2 |
+| Management overview | Pass — currently reports 0 registered staff accounts |
+
+## Remaining run blockers and newly detected issue
+
+- Two disposable teacher registrations were attempted through the live invite flow, but Supabase Auth returned `email rate limit exceeded`. Therefore teacher-specific positive tests and cross-account synchronization are still pending; no teacher accounts were created by this run.
+- Loading the demo tool more than once creates duplicate `Demo Pupil - ...` records. The current Primary 2 smoke class showed six pupils after repeated loading. The loader should become idempotent or warn that the labelled dataset already exists before the handover run.
+- Because no teacher persona was available, staff restrictions, teacher activity tracking, admin promotion/removal, and suspension were not positively verified.
+
 ## Required next test pass
 
 The next pass should use a clearly labelled QA run, for example `QA-2026-08-10`, with:
