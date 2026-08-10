@@ -29,6 +29,9 @@ check('protected data endpoint',
 check('management-only settings endpoint',
   /settings\.app_config\.update/.test(dataApi) && /requireManagement\(token\)/.test(dataApi),
   'management guard is present in the data API');
+check('teacher class context stays local',
+  /!hasResultPermission\('result_settings\.manage'\)/.test(portal) && /local_only:true/.test(portal),
+  'teachers can enter classes without writing the school-wide academic context');
 check('safe next-term activation path',
   /settings\.activate_next_term/.test(dataApi) && /academic_context/.test(dataApi) && /settings\.activate_next_term/.test(portal) && /skipCloud/.test(portal),
   'term configuration and academic context are synchronized before local state changes');

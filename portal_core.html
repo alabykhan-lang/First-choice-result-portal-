@@ -2000,6 +2000,15 @@ function setResultContext(classKey,session,term,readOnly){
   var selectedTerm=String(term||'').trim();
   if(!classKey||!selectedSession||!selectedTerm)return Promise.reject({code:'RESULT_CONTEXT_INVALID'});
   var historicalContext=Boolean(readOnly||CONTEXT_READ_ONLY);
+  // Staff can work inside a class without changing the school-wide context.
+  // Only management is allowed to persist the official context used by every device.
+  if(!historicalContext&&!hasResultPermission('result_settings.manage')){
+    window._academicContext={academic_session:selectedSession,term:selectedTerm,term_status:'open',local_only:true};
+    window._activeServerSession=selectedSession;
+    window._activeServerTerm=selectedTerm;
+    window._activeTermStatus='open';
+    return Promise.resolve({ok:true,local_context:true});
+  }
   return resultDataRequest(historicalContext?'history.context.set':'context.set',{
     class_key:dbClassKey(classKey,selectedSession),
     academic_session:selectedSession,
