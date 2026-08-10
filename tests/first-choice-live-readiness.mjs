@@ -29,6 +29,21 @@ check('protected data endpoint',
 check('management-only settings endpoint',
   /settings\.app_config\.update/.test(dataApi) && /requireManagement\(token\)/.test(dataApi),
   'management guard is present in the data API');
+check('safe next-term activation path',
+  /settings\.activate_next_term/.test(dataApi) && /academic_context/.test(dataApi) && /settings\.activate_next_term/.test(portal) && /skipCloud/.test(portal),
+  'term configuration and academic context are synchronized before local state changes');
+check('explicit result unpublish handling',
+  /action === 'results\.unpublish'/.test(dataApi) && /RESULT_ACTION_NOT_SUPPORTED/.test(dataApi),
+  'unpublish is implemented explicitly and unknown actions are rejected');
+check('idempotent labelled demo loader',
+  /read\.students/.test(portal) && /No duplicate pupils were created/.test(portal),
+  're-running the demo loader does not create another copy of the labelled pupils');
+check('grade scale persistence',
+  /cfg\.gradeScale=GRADE_SCALE\.map/.test(portal) && /hydrateGradeScale/.test(portal),
+  'saved grade thresholds are restored and used by the portal');
+check('report card fee visibility follows settings',
+  /getSessionCfg\(\)\.showFees!==false/.test(portal),
+  'fee schedule is hidden only when management turns it off');
 check('school administrator identity',
   /amb\.adigun002@gmail\.com/i.test(authApi),
   'official school administrator email is defined');

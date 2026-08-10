@@ -1526,7 +1526,7 @@ var CONTEXT_READ_ONLY=false;
 window._academicContext=null;
 window._academicHistory=[];
 window._activeTermStatus='open';
-var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees.update','results.publish','results.unpublish','students.upsert','students.archive','demo.clear','settings.app_config.update'];
+var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees.update','results.publish','results.unpublish','students.upsert','students.archive','demo.clear','settings.app_config.update','settings.activate_next_term'];
 
 function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(String(action||'').toLowerCase())>-1;}
 
@@ -2035,14 +2035,22 @@ function clearSessionCaches(){
 }
 
 function getCfg(){
+  function hydrateGradeScale(cfg){
+    if(typeof GRADE_SCALE==='undefined'||!cfg||!Array.isArray(cfg.gradeScale)||cfg.gradeScale.length!==GRADE_SCALE.length)return cfg;
+    GRADE_SCALE=cfg.gradeScale.map(function(item,i){
+      var base=GRADE_SCALE[i]||{};
+      return Object.assign({},base,{min:Number(item.min),max:Number(item.max),g:String(item.g||base.g),r:String(item.r||base.r)});
+    });
+    return cfg;
+  }
   // Use remote config if available (loaded from Supabase on login)
   if(window._remoteCfg){
     if(!window._remoteCfg.school||/WAY TO SUCCESS|WTS/i.test(window._remoteCfg.school.name||'')){window._remoteCfg.school=Object.assign({},DEFAULT_SCHOOL);}
-    return window._remoteCfg;
+    return hydrateGradeScale(window._remoteCfg);
   }
   try{
     var stored=JSON.parse(localStorage.getItem('first_choice_portal_config')||'null');
-    if(stored&&typeof stored==='object')return Object.assign({school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM},stored);
+    if(stored&&typeof stored==='object')return hydrateGradeScale(Object.assign({school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM},stored));
   }catch(e){}
   return{school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM};
 }
@@ -2055,9 +2063,10 @@ function dbUpsertSettings(key,value){
   return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
 }
 
-function saveCfg(cfg){
+function saveCfg(cfg,options){
   window._remoteCfg=cfg;
   try{localStorage.setItem('first_choice_portal_config',JSON.stringify(cfg));}catch(e){}
+  if(options&&options.skipCloud)return Promise.resolve(cfg);
   if(isCentralAuth()&&hasResultPermission('result_settings.manage')){
     dbUpsertSettings('app_config',JSON.stringify(cfg))
       .then(function(){showSaved();})
@@ -2945,11 +2954,14 @@ function activateNextAcademicTerm(){
   var session=String(cfg.session||DEFAULT_SESSION);
   if(current==='3rd Term')session=nextAcademicSession(session)||session;
   if(!confirm('Activate '+next+' for '+session+' across the full portal?'))return;
-  cfg.session=session;cfg.term=next;saveCfg(cfg);
-  applyOfficialAcademicConfig(session,next,'open');
-  var ss=document.getElementById('cfg-session');if(ss)ss.value=session;
-  var st=document.getElementById('cfg-term');if(st)st.value=next;
-  dbUpsertSettings('app_config',JSON.stringify(cfg)).then(function(){showToast('Next term activated and synced.');}).catch(function(){showToast('Next term activated locally. Cloud setup still needs the result database functions.','error');});
+  var nextCfg=Object.assign({},cfg,{session:session,term:next});
+  resultDataRequest('settings.activate_next_term',{config:nextCfg,academic_session:session,term:next}).then(function(){
+    saveCfg(nextCfg,{skipCloud:true});
+    applyOfficialAcademicConfig(session,next,'open');
+    var ss=document.getElementById('cfg-session');if(ss)ss.value=session;
+    var st=document.getElementById('cfg-term');if(st)st.value=next;
+    showToast('Next term activated and synchronized.');
+  }).catch(function(error){showToast((error&&error.message)||'Next term was not activated. No academic context was changed.','error');});
 }
 
 function saveAssessmentScope(){
@@ -3408,8 +3420,15 @@ function loadDemoData(){
   if(!isCentralAuth()||!hasResultPermission('result_settings.manage')){showToast('Management access is required to load demo data.','error');return;}
   if(!confirm('Load demo pupils, pictures, scores and fees across the school?'))return;
   var assessment=getAssessmentConfig(),session=getActiveSession(),term=TERM,studentsToSeed=[];ALL_CLASSES.forEach(function(classKey,classIndex){for(var i=1;i<=2;i++){studentsToSeed.push({classKey:classKey,classIndex:classIndex,number:i,name:'Demo Pupil - '+DEPTS[classKey].label+' '+i,gender:i%2?'Male':'Female',admno:'',house:null,age:String(5+(classIndex%10)),photo:demoAvatar('Demo Pupil '+i,classIndex+i)});}});
-  showLoad('Creating '+studentsToSeed.length+' demo pupils...');
-  Promise.all(studentsToSeed.map(function(item){var payload={class_key:dbClassKey(item.classKey),academic_session:session,name:item.name,gender:item.gender,admno:'DEMO-'+String(item.classIndex+1).padStart(2,'0')+String(item.number).padStart(2,'0'),house:null,age:item.age,photo:item.photo};return resultDataRequest('students.upsert',payload).then(function(response){var student=response.student||Object.assign({id:'demo-'+item.classKey+'-'+item.number},payload);DB_STUDENTS[item.classKey]=DB_STUDENTS[item.classKey]||[];DB_STUDENTS[item.classKey].push(student);return{item:item,student:student};});})).then(function(created){showLoad('Adding demo scores, traits, fees and remarks...');var jobs=[];created.forEach(function(entry){var student=entry.student,key=entry.item.classKey;var subjectCount=Math.min(5,DEPTS[key].subjects.length);for(var si=0;si<subjectCount;si++){var ca1=Math.min(assessment.caMarks[0],10+(entry.item.number*2)+(si%3));var ca2=assessment.caCount>=2?Math.min(assessment.caMarks[1],11+(si%4)):null;var ca3=assessment.caCount>=3?Math.min(assessment.caMarks[2],7+(si%3)):null;var exam=Math.min(assessment.examMark,48+(si*3)+(entry.item.number*2));jobs.push(resultDataRequest('scores.enter',{student_id:student.id,class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,ca1:ca1,ca2:ca2,ca3:ca3,exam:exam}).then(function(res){var row=res.score||res.row;if(row){DB_SCORES[row.student_id]=DB_SCORES[row.student_id]||{};DB_SCORES[row.student_id][row.subject_index]={ca1:scoreCellValue(row.ca1),ca2:scoreCellValue(row.ca2),ca3:scoreCellValue(row.ca3),exam:scoreCellValue(row.exam)};}}));jobs.push(resultDataRequest('results.publish',{class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,published:true}));}var total=100+(entry.item.classIndex%5)*25,paid=entry.item.number===1?total:Math.round(total*.65);jobs.push(resultDataRequest('fees.update',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,total:total,paid:paid,debt:total-paid}).then(function(res){DB_FEES[student.id]=res.fee||{total:total,paid:paid,debt:total-paid};}));AFF6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'affective',trait_name:tr,rating:String(3+(entry.item.number+i)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].affective[tr]=String(3+(entry.item.number+i)%3);}));});PSY6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'psychomotor',trait_name:tr,rating:String(3+(entry.item.number+i+1)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].psychomotor[tr]=String(3+(entry.item.number+i+1)%3);}));});jobs.push(resultDataRequest('remarks.enter',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,academic:entry.item.number===1?'Excellent performance.':'Good progress this term.',form_master:'Keep working hard.',principal:'Approved'}).then(function(res){DB_REMARKS[student.id]=res.remark||{};}));});return Promise.all(jobs);}).then(function(){hideLoad();var status=document.getElementById('demo-data-status');if(status)status.textContent='Demo data loaded: '+studentsToSeed.length+' pupils across '+ALL_CLASSES.length+' class groups, with pictures, published scores, traits, psychomotor ratings, fees and remarks.';showToast('Complete demo data loaded successfully.');renderHome();renderStudents();renderDash();}).catch(function(error){hideLoad();console.error('Demo seed error:',error);showToast('Demo data could not be completed: '+(error.message||error.code||'database error'),'error');});
+  showLoad('Checking existing demo pupils...');
+  resultDataRequest('read.students',{academic_session:session}).then(function(existingPayload){
+    var existing=Array.isArray(existingPayload.rows)?existingPayload.rows:[],seen={};
+    existing.forEach(function(row){seen[String(row.class_key)+'|'+String(row.academic_session||session)+'|'+String(row.name||'').toLowerCase()]=true;});
+    studentsToSeed=studentsToSeed.filter(function(item){return !seen[dbClassKey(item.classKey)+'|'+session+'|'+item.name.toLowerCase()];});
+    if(!studentsToSeed.length){hideLoad();var ready=document.getElementById('demo-data-status');if(ready)ready.textContent='Demo data is already present for '+session+'. No duplicate pupils were created.';showToast('Demo data already exists; no duplicates were created.');return null;}
+    showLoad('Creating '+studentsToSeed.length+' new demo pupils...');
+    return Promise.all(studentsToSeed.map(function(item){var payload={class_key:dbClassKey(item.classKey),academic_session:session,name:item.name,gender:item.gender,admno:'DEMO-'+String(item.classIndex+1).padStart(2,'0')+String(item.number).padStart(2,'0'),house:null,age:item.age,photo:item.photo};return resultDataRequest('students.upsert',payload).then(function(response){var student=response.student||Object.assign({id:'demo-'+item.classKey+'-'+item.number},payload);DB_STUDENTS[item.classKey]=DB_STUDENTS[item.classKey]||[];DB_STUDENTS[item.classKey].push(student);return{item:item,student:student};});})).then(function(created){showLoad('Adding demo scores, traits, fees and remarks...');var jobs=[];created.forEach(function(entry){var student=entry.student,key=entry.item.classKey;var subjectCount=Math.min(5,DEPTS[key].subjects.length);for(var si=0;si<subjectCount;si++){var ca1=Math.min(assessment.caMarks[0],10+(entry.item.number*2)+(si%3));var ca2=assessment.caCount>=2?Math.min(assessment.caMarks[1],11+(si%4)):null;var ca3=assessment.caCount>=3?Math.min(assessment.caMarks[2],7+(si%3)):null;var exam=Math.min(assessment.examMark,48+(si*3)+(entry.item.number*2));jobs.push(resultDataRequest('scores.enter',{student_id:student.id,class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,ca1:ca1,ca2:ca2,ca3:ca3,exam:exam}).then(function(res){var row=res.score||res.row;if(row){DB_SCORES[row.student_id]=DB_SCORES[row.student_id]||{};DB_SCORES[row.student_id][row.subject_index]={ca1:scoreCellValue(row.ca1),ca2:scoreCellValue(row.ca2),ca3:scoreCellValue(row.ca3),exam:scoreCellValue(row.exam)};}}));jobs.push(resultDataRequest('results.publish',{class_key:dbClassKey(key),subject_index:si,term:term,academic_session:session,published:true}));}var total=100+(entry.item.classIndex%5)*25,paid=entry.item.number===1?total:Math.round(total*.65);jobs.push(resultDataRequest('fees.update',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,total:total,paid:paid,debt:total-paid}).then(function(res){DB_FEES[student.id]=res.fee||{total:total,paid:paid,debt:total-paid};}));AFF6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'affective',trait_name:tr,rating:String(3+(entry.item.number+i)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].affective[tr]=String(3+(entry.item.number+i)%3);}));});PSY6.forEach(function(tr,i){jobs.push(resultDataRequest('traits.enter',{student_id:student.id,class_key:dbClassKey(key),trait_type:'psychomotor',trait_name:tr,rating:String(3+(entry.item.number+i+1)%3),term:term,academic_session:session}).then(function(){DB_TRAITS[student.id]=DB_TRAITS[student.id]||{affective:{},psychomotor:{}};DB_TRAITS[student.id].psychomotor[tr]=String(3+(entry.item.number+i+1)%3);}));});jobs.push(resultDataRequest('remarks.enter',{student_id:student.id,class_key:dbClassKey(key),term:term,academic_session:session,academic:entry.item.number===1?'Excellent performance.':'Good progress this term.',form_master:'Keep working hard.',principal:'Approved'}).then(function(res){DB_REMARKS[student.id]=res.remark||{};}));});return Promise.all(jobs);}).then(function(){hideLoad();var status=document.getElementById('demo-data-status');if(status)status.textContent='Demo data loaded: '+studentsToSeed.length+' new pupils across '+ALL_CLASSES.length+' class groups, with pictures, published scores, traits, psychomotor ratings, fees and remarks.';showToast('Complete demo data loaded successfully.');renderHome();renderStudents();renderDash();});
+  }).catch(function(error){hideLoad();console.error('Demo seed error:',error);showToast('Demo data could not be completed: '+(error.message||error.code||'database error'),'error');});
 }
 function clearDemoData(){
   if(!isCentralAuth()||!hasResultPermission('result_settings.manage')){showToast('Management access is required to clear demo data.','error');return;}
@@ -4509,7 +4528,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   }
 
   // NEXT TERM FEE SCHEDULE — planned charges, not current outstanding balances
-  if(sec.showFees&&configuredFees.length){
+  if(sec.showFees&&getSessionCfg().showFees!==false&&configuredFees.length){
     h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Next Term Fee Schedule</div>'
       +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">NEXT TERM AMOUNT</th></tr></thead><tbody>'
@@ -4952,6 +4971,7 @@ function saveSettings(){
   cfg.session=String(document.getElementById('cfg-session').value||DEFAULT_SESSION).trim()||DEFAULT_SESSION;
   cfg.term=(document.getElementById('cfg-term')||{}).value||DEFAULT_TERM;
   cfg.assessmentScope=(document.getElementById('assessment-scope')||{}).value||cfg.assessmentScope||'full_class';
+  cfg.gradeScale=GRADE_SCALE.map(function(g){return{min:Number(g.min),max:Number(g.max),g:String(g.g),r:String(g.r)};});
   cfg.promotionCfg=readPromotionCfgFromForm();
   saveCfg(cfg);
   applyOfficialAcademicConfig(cfg.session,cfg.term,'open');

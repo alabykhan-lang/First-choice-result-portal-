@@ -178,7 +178,12 @@ create policy "Staff can read own profile" on public.staff_profiles
 create policy "Management can update staff profiles" on public.staff_profiles
   for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
 create policy "Authenticated users can create own profile" on public.staff_profiles
-  for insert to authenticated with check (id = (select auth.uid()));
+  for insert to authenticated
+  with check (
+    id = (select auth.uid())
+    and role = 'staff'
+    and is_developer = false
+  );
 
 drop policy if exists "First Choice authenticated access" on public.portal_access_config;
 create policy "Anyone can check invite configuration" on public.portal_access_config

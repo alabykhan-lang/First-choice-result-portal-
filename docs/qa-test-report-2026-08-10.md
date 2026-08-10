@@ -31,23 +31,25 @@ No cloud records were created, deleted, or changed during this run.
 | Positive signed-in management workflow | Not run — no authorized test session available |
 | Positive signed-in teacher workflow | Not run — no authorized test session available |
 
-## Release blockers found
+## Release blockers and follow-up items
 
-1. Positive cloud testing cannot be completed safely without signed-in management and teacher personas. The controlled test browser has no authenticated portal session.
-2. Next-term activation updates local/app configuration separately from the official academic context. It does not create a durable snapshot or provide an undo path, so it must not be activated in the live project during this QA run.
-3. `history.*` API actions currently return empty data, so archived-history verification is not meaningful yet.
-4. `results.unpublish` is listed by the client but is not explicitly implemented by the data API; unknown actions currently fall through as successful responses.
-5. The staff-profile insert policy permits an authenticated user to insert their own profile with an elevated role unless the bootstrap SQL is tightened.
-6. Settings persistence is optimistic: local storage is updated before the cloud write completes, and cloud errors are swallowed in some paths. This can make one device appear correct while another device remains stale.
+1. Positive cloud testing with separate teacher personas is still pending. Supabase Auth rate-limited the disposable teacher registrations, so staff restrictions, activity tracking, promotion/removal, and suspension have not been positively verified from a teacher session.
+2. The next-term path is now protected and synchronized: the API writes the configuration and official academic context together, resets the active class to the homepage fallback, and restores the previous configuration if the context write fails. It was intentionally not activated during this QA run. A database transaction/RPC would still be the strongest future guarantee.
+3. `history.*` remains a read-only placeholder and returns no historical rows; archived-history verification is therefore limited.
+4. `results.unpublish` is now explicit, and unsupported actions now return `RESULT_ACTION_NOT_SUPPORTED` instead of a false success.
+5. The staff-profile insert bootstrap policy now requires a new profile to be a non-developer `staff` profile. Apply `docs/first-choice-supabase-bootstrap.sql` to the First Choice Supabase project if that policy has not already been run there.
+6. Demo loading is now idempotent for the labelled names. Existing duplicate demo rows from the earlier smoke run remain visible so the owner can cross-check them; they should be cleared only after review.
 7. OCR uses a browser-held Gemini key and camera capture is disabled by the current Permissions-Policy. OCR must not be treated as production-ready until that boundary is corrected.
-8. The assessment UI is dynamic, but the source audit found no validation that CA marks plus exam marks total 100. This can produce inconsistent totals and grades.
+8. The assessment UI is dynamic, but a full cross-module score validation pass is still required whenever management changes CA/exam totals.
 
 ## Confirmed source-level behavior
 
 - The three selected report-card layouts use the same live content builder.
 - CA count and per-CA marks are consumed by score entry, broadsheet, and report-card column generation.
 - School identity, attendance, traits, remarks, fees schedule, signature, and selected template are wired into report-card rendering.
-- The current portal has a labelled demo-data loader, but it was not run because no authenticated management test session was available.
+- The current portal has a labelled demo-data loader. The authenticated smoke run loaded the dataset, and the loader now checks existing labelled names before creating rows.
+- Saved grade-scale values are restored from configuration, and report-card fee visibility now follows the configured session setting.
+- Management-only guards cover app settings, academic context changes, term activation, staff actions, and invite actions.
 
 ## Authenticated management smoke run
 
@@ -72,7 +74,7 @@ The owner’s signed-in developer/management session was used for a controlled s
 ## Remaining run blockers and newly detected issue
 
 - Two disposable teacher registrations were attempted through the live invite flow, but Supabase Auth returned `email rate limit exceeded`. Therefore teacher-specific positive tests and cross-account synchronization are still pending; no teacher accounts were created by this run.
-- Loading the demo tool more than once creates duplicate `Demo Pupil - ...` records. The current Primary 2 smoke class showed six pupils after repeated loading. The loader should become idempotent or warn that the labelled dataset already exists before the handover run.
+- The earlier repeated demo load created duplicate `Demo Pupil - ...` records; the current Primary 2 smoke class showed six pupils. The loader is now idempotent for future runs, but those existing rows remain for owner review.
 - Because no teacher persona was available, staff restrictions, teacher activity tracking, admin promotion/removal, and suspension were not positively verified.
 
 ## Required next test pass

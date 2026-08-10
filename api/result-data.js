@@ -85,7 +85,11 @@ function filterParams(payload = {}) {
 }
 
 async function readResource(resource, payload, token) {
-  if (!READ_RESOURCES.has(resource)) return [];
+  if (!READ_RESOURCES.has(resource)) {
+    const error = new Error('Result action is not supported.');
+    error.payload = { code: 'RESULT_ACTION_NOT_SUPPORTED', message: error.message };
+    throw error;
+  }
   const query = filterParams(payload);
   if (resource === 'students' && payload.archived === undefined) query.set('archived', 'eq.false');
   query.set('order', resource === 'students' ? 'created_at.asc' : 'created_at.asc');
@@ -120,6 +124,20 @@ async function upsert(table, body, token) {
     body,
   }, token);
   return Array.isArray(rows) ? rows[0] || null : rows;
+}
+
+async function unpublishResult(payload, token) {
+  await supabaseRest(`published_subjects?class_key=eq.${encodeURIComponent(payload.class_key)}&term=eq.${encodeURIComponent(payload.term)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}`, {
+    method: 'DELETE',
+    prefer: 'return=minimal',
+  }, token);
+  return { ok: true, published: false };
+}
+
+function unsupportedAction() {
+  const error = new Error('Result action is not supported.');
+  error.payload = { code: 'RESULT_ACTION_NOT_SUPPORTED', message: error.message };
+  throw error;
 }
 
 async function handleAction(action, payload, token) {
@@ -159,9 +177,12 @@ async function handleAction(action, payload, token) {
   }
   if (action.startsWith('history.')) {
     if (action === 'history.context.set') return { ok: true, read_only: true };
-    return { ok: true, rows: [] };
+    const historyResource = action.slice('history.'.length);
+    if (['read', 'students', 'graduates'].includes(historyResource) || READ_RESOURCES.has(historyResource)) return { ok: true, rows: [] };
+    return unsupportedAction();
   }
   if (action === 'context.set') {
+    await requireManagement(token);
     const context = await upsert('academic_context', {
       id: 1,
       class_key: payload.class_key || null,
@@ -174,8 +195,32 @@ async function handleAction(action, payload, token) {
   if (action === 'context.read') return { ok: true, context: (await readSettings(token)).academic_context };
   if (action === 'settings.read') return { ok: true, settings: await readSettings(token) };
   if (action === 'settings.app_config.update') {
+    await requireManagement(token);
     const config = await upsert('app_config', { id: 1, config: payload.config || {} }, token);
     return { ok: true, config };
+  }
+  if (action === 'settings.activate_next_term') {
+    await requireManagement(token);
+    const previous = await readSettings(token);
+    const nextConfig = payload.config || {};
+    const nextContext = {
+      id: 1,
+      class_key: null,
+      academic_session: payload.academic_session || nextConfig.session || previous.academic_context?.academic_session,
+      term: payload.term || nextConfig.term || previous.academic_context?.term,
+      term_status: 'open',
+    };
+    const config = await upsert('app_config', { id: 1, config: nextConfig }, token);
+    try {
+      const context = await upsert('academic_context', nextContext, token);
+      return { ok: true, config, context };
+    } catch (error) {
+      // Do not leave app_config and academic_context pointing at different terms.
+      if (previous.app_config && Object.keys(previous.app_config).length) {
+        try { await upsert('app_config', { id: 1, config: previous.app_config }, token); } catch (_) { /* preserve original error */ }
+      }
+      throw error;
+    }
   }
   if (action === 'students.upsert') {
     const student = await upsert('students', payload, token);
@@ -235,16 +280,12 @@ async function handleAction(action, payload, token) {
   }
   if (action === 'results.publish') {
     if (payload.published === false) {
-      await supabaseRest(`published_subjects?class_key=eq.${encodeURIComponent(payload.class_key)}&term=eq.${encodeURIComponent(payload.term)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}`, {
-        method: 'DELETE',
-        prefer: 'return=minimal',
-      }, token);
-      return { ok: true, published: false };
+      return unpublishResult(payload, token);
     }
     return { ok: true, published_subject: await upsert('published_subjects', payload, token) };
   }
-  // Export, analytics, and other non-persistent actions are handled by the UI.
-  return { ok: true };
+  if (action === 'results.unpublish') return unpublishResult(payload, token);
+  return unsupportedAction();
 }
 
 module.exports = async function resultData(req, res) {
