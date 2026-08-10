@@ -68,6 +68,16 @@ The live RLS policy was corrected after the first teacher test exposed a mismatc
 | Score entry | Pass — CA1 change persisted after save and refresh with no false failure message |
 | Registered staff profiles | Pass — two active non-developer staff rows confirmed in Supabase |
 
+## Follow-up defect found and fixed
+
+The owner’s clean Primary 3 card test exposed `Failed to load card data`, which was not caught in the earlier smoke run. Root cause: the API hardening correctly rejected unknown actions, but the card page still called `report_cards.generate` and exports used `results.export` as non-writing validation actions. Those actions are now explicitly supported and return read-only success.
+
+| Follow-up check | Result |
+|---|---|
+| Primary 3 card from clean management session | Pass — card content, subjects, traits, fees and remarks rendered |
+| Manager writes a score | Pass — score changed to 12 and displayed Saved |
+| Separate teacher session reads the same score | Pass — score 12 appeared in the subject sheet with no failure message |
+
 ## Authenticated management smoke run
 
 The owner’s signed-in developer/management session was used for a controlled smoke run. The run was not allowed to activate the next term.
