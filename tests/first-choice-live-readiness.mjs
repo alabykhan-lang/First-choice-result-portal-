@@ -6,6 +6,8 @@ const root = new URL('..', import.meta.url);
 const portal = await fs.readFile(new URL('portal_core.html', root), 'utf8');
 const dataApi = await fs.readFile(new URL('api/result-data.js', root), 'utf8');
 const authApi = await fs.readFile(new URL('api/result-auth.js', root), 'utf8');
+const manifest = await fs.readFile(new URL('manifest.webmanifest', root), 'utf8');
+const androidActivity = await fs.readFile(new URL('android-app/src/main/java/com/firstchoice/standard/results/MainActivity.java', root), 'utf8');
 
 const checks = [];
 function check(name, passed, detail) {
@@ -62,6 +64,15 @@ check('report card fee visibility follows settings',
 check('school administrator identity',
   /amb\.adigun002@gmail\.com/i.test(authApi),
   'official school administrator email is defined');
+check('mobile-first install metadata',
+  /display\": \"standalone/.test(manifest) && /first-choice-logo\.jpg/.test(manifest) && /meta name=\"theme-color\"/.test(portal),
+  'PWA metadata, school logo and mobile theme are present');
+check('branded Android wrapper',
+  /first-choice-result-portal\.vercel\.app/.test(androidActivity) && /AndroidPrint/.test(androidActivity),
+  'Android app opens the First Choice portal and supports native printing');
+check('responsive overflow containment',
+  /tbl-wrap\{overflow-x:auto/.test(portal) && /sheet-header,\.sheet-row\{min-width:570px/.test(portal),
+  'wide score/report tables scroll inside their containers on phones');
 
 async function live(name, path, init, expected) {
   try {

@@ -1,4 +1,4 @@
-package com.waytosuccess.results;
+package com.firstchoice.standard.results;
 
 import android.app.Activity;
 import android.app.DownloadManager;
@@ -21,7 +21,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String PORTAL_URL = "https://wts-result-system.vercel.app/";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;

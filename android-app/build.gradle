@@ -3,14 +3,14 @@ plugins {
 }
 
 android {
-    namespace "com.waytosuccess.results"
+    namespace "com.firstchoice.standard.results"
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.waytosuccess.results"
+        applicationId "com.firstchoice.standard.results"
         minSdk 23
         targetSdk 35
         versionCode 2
-        versionName "1.0.1"
+        versionName "1.1.0"
     }
 }

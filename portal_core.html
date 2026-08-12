@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="theme-color" content="#075b38"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<link rel="icon" href="first-choice-logo.jpg" type="image/jpeg"/>
+<link rel="manifest" href="manifest.webmanifest"/>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   var src=new URL('/first-choice-logo.jpg',window.location.origin).href;
@@ -427,12 +432,37 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   .fg-row{grid-template-columns:1fr}
   .sheet-header,.sheet-row{grid-template-columns:25px 1fr 55px 55px 55px 80px 55px 60px 70px;
     font-size:.65rem}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sheet-header,.sheet-row{min-width:570px}
+  .bs-table,.progress-table{min-width:720px}
 }
 @media(max-width:600px){
   .content{padding:14px}
   #bottom-nav{display:block}
   .content{padding-bottom:74px}
   .topbar{padding:10px 14px}
+  .tb-left{min-width:0}
+  .tb-title{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-sub{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-right{gap:5px}
+  .tb-right .btn{padding:7px 9px;font-size:.72rem}
+  .content>*{max-width:100%}
+  .tbl-head{min-width:520px}
+  .data-table{min-width:520px}
+  .sheet-header,.sheet-row{min-width:570px}
+  .bs-table,.progress-table{min-width:720px}
+  .form-grp,.form-grp input,.form-grp select,.inp,.sel{max-width:100%;min-width:0}
+  .stats-row .stat-card{min-width:0;padding:14px 12px}
+  .stats-row .stat-card h3{font-size:1.45rem}
+  .home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .subj-grid{grid-template-columns:1fr}
+  .template-picker{grid-template-columns:1fr}
+  .template-option{display:grid;grid-template-columns:92px 1fr;column-gap:10px;align-items:center}
+  .template-option strong,.template-option small{margin-top:0}
+  .template-preview{grid-row:span 2}
+  .auth-box{max-height:calc(100vh - 24px);overflow-y:auto}
+  .auth-body{padding:18px}
+  .modal-body{padding:16px}
   .stats-row{grid-template-columns:1fr 1fr;gap:10px}
   .modal{max-width:100%;border-radius:16px 16px 0 0;
     position:fixed;bottom:0;left:0;right:0;height:90vh;max-height:90vh;margin:0;
