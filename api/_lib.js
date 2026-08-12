@@ -58,7 +58,7 @@ function sessionFromRequest(req) {
 }
 
 function setSessionCookie(res, sessionId, sessionSecret) {
-  const value = encodeURIComponent(`${sessionId}.${sessionSecret}`);
+  const value = encodeURIComponent(sessionSecret ? `${sessionId}.${sessionSecret}` : sessionId);
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=${value}; Path=/; Max-Age=${SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`);
 }
 
@@ -124,7 +124,9 @@ async function supabaseRest(resource, options = {}, accessToken) {
 
 function bearerTokenFromRequest(req) {
   const value = String(req.headers.authorization || '');
-  return /^Bearer\s+(.+)$/i.test(value) ? value.replace(/^Bearer\s+/i, '').trim() : null;
+  if (/^Bearer\s+(.+)$/i.test(value)) return value.replace(/^Bearer\s+/i, '').trim();
+  const cookieValue = parseCookies(req)[COOKIE_NAME];
+  return cookieValue || null;
 }
 
 async function supabaseAuthRequest(path, body, accessToken) {

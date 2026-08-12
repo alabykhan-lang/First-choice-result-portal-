@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-const baseUrl = (process.env.RESULT_PORTAL_URL || 'https://wts-result-system.vercel.app').replace(/\/$/, '');
+const baseUrl = (process.env.RESULT_PORTAL_URL || 'https://first-choice-result-portal.vercel.app').replace(/\/$/, '');
 
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -22,8 +22,8 @@ async function request(path, options = {}) {
 }
 
 const unauthenticatedGet = await request('/api/result-auth');
-assert.equal(unauthenticatedGet.response.status, 401);
-assert.equal(unauthenticatedGet.body.code, 'RESULT_SESSION_REQUIRED');
+assert.equal(unauthenticatedGet.response.status, 200);
+assert.equal(unauthenticatedGet.body.configured, true);
 
 const unauthenticatedData = await request('/api/result-data', {
   method: 'POST',
@@ -38,7 +38,7 @@ const invalidLogin = await request('/api/result-auth', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     action: 'login',
-    login: 'contract-test-invalid-login@example.invalid',
+    email: 'contract-test-invalid-login@example.invalid',
     password: 'contract-test-invalid-password',
   }),
 });

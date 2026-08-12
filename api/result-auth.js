@@ -6,6 +6,7 @@ const {
   readJsonBody,
   requestOriginAllowed,
   sendJson,
+  setSessionCookie,
   supabaseAuthRequest,
   supabaseRest,
 } = require('./_lib');
@@ -105,19 +106,24 @@ module.exports = async function resultAuth(req, res) {
   const body = await readJsonBody(req);
   if (!body || typeof body.action !== 'string') return sendJson(res, 400, { ok: false, code: 'INVALID_JSON' });
 
-  if (body.action === 'logout') return sendJson(res, 200, { ok: true, code: 'RESULT_LOGOUT_SUCCESS' });
+  if (body.action === 'logout') {
+    clearSessionCookie(res);
+    return sendJson(res, 200, { ok: true, code: 'RESULT_LOGOUT_SUCCESS' });
+  }
 
   try {
     if (body.action === 'login') {
       const payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
       const enriched = await enrichUser(payload.user, payload.access_token);
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload, user: payload.user, staff_profile: enriched.profile });
+      setSessionCookie(res, payload.access_token);
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: true, user: payload.user, staff_profile: enriched.profile });
     }
     if (body.action === 'register') {
       if (!(await inviteIsValid(body.invite_code))) return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
       const payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'first_choice_result' } });
       const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token) : { profile: fallbackProfile(payload.user) };
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', session: payload.access_token ? payload : null, user: payload.user || null, staff_profile: enriched.profile });
+      if (payload.access_token) setSessionCookie(res, payload.access_token);
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: Boolean(payload.access_token), user: payload.user || null, staff_profile: enriched.profile });
     }
     if (body.action === 'forgot_password') {
       await supabaseAuthRequest('recover', { email: body.email, redirect_to: `${req.headers.origin || ''}/portal_core.html` });
