@@ -7,6 +7,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Build;
+import android.graphics.Color;
+import android.view.View;
+import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
@@ -30,6 +34,21 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Keep the Android system bars inside the First Choice brand and keep
+        // notification/home icons readable on modern edge-to-edge Android.
+        Window window = getWindow();
+        int schoolGreen = Color.rgb(7, 91, 56);
+        window.setStatusBarColor(schoolGreen);
+        window.setNavigationBarColor(schoolGreen);
+        window.getDecorView().setSystemUiVisibility(0);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && window.getInsetsController() != null) {
+            window.getInsetsController().setSystemBarsAppearance(
+                0,
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            );
+        }
 
         webView = new WebView(this);
         setContentView(webView);
