@@ -248,6 +248,16 @@ async function handleAction(action, payload, token) {
     return { ok: true, removed: Array.isArray(rows) ? rows.length : 0 };
   }
   if (action === 'scores.enter') {
+    const publication = await supabaseRest(`published_subjects?class_key=eq.${encodeURIComponent(payload.class_key)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&term=eq.${encodeURIComponent(payload.term)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}&published=eq.true&limit=1`, {}, token);
+    if (publication?.[0]) {
+      const manager = await currentStaff(token);
+      if (!manager.profile.suspended && !['developer', 'admin'].includes(manager.profile.role)) {
+        const error = new Error('This subject is published and locked. Unpublish it before making corrections.');
+        error.status = 403;
+        error.payload = { code: 'RESULT_SCORE_LOCKED', message: error.message };
+        throw error;
+      }
+    }
     // Update the exact score row when it already exists, otherwise insert it.
     // This is deliberately explicit so score entry remains reliable even when
     // PostgREST's composite upsert handling differs between deployments.

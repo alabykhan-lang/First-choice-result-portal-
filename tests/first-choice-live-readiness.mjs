@@ -44,6 +44,9 @@ check('report-card actions are supported',
 check('score writes require a returned row',
   /RESULT_SCORE_SAVE_FAILED/.test(dataApi) && /if \(!rows\?\.\[0\]\)/.test(dataApi),
   'the API rejects empty update responses instead of reporting an old score as saved');
+check('published scores lock teacher edits',
+  /RESULT_SCORE_LOCKED/.test(dataApi) && /published_subjects\?class_key=eq\./.test(dataApi),
+  'published subjects are locked for staff while management retains correction access');
 check('teacher result-write policies',
   /Signed-in staff can insert results/.test(await fs.readFile(new URL('docs/first-choice-supabase-bootstrap.sql', root), 'utf8')) && /Signed-in staff can update results/.test(await fs.readFile(new URL('docs/first-choice-supabase-bootstrap.sql', root), 'utf8')),
   'the bootstrap grants classroom write access while keeping management settings protected');

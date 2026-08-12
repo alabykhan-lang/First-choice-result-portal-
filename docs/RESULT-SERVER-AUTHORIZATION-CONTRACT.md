@@ -48,6 +48,12 @@ This phase creates no permission grants and does not infer access from a
 legacy `admin` or `teacher` string. `results.manage` is an explicit broad
 management grant, not a browser role claim.
 
+Published-score lock: once a subject is published, ordinary staff cannot edit
+its score rows. A correction requires unpublishing the subject first; an
+authorized Results manager may correct a published score. This prevents silent
+post-publication teacher changes while preserving an explicit management
+correction path.
+
 ## Database entry points
 
 - `school_identity_result_login`

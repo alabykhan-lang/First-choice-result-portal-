@@ -1915,6 +1915,7 @@ function resultContextMessage(error){
   if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY'){
     return 'This academic history is read-only. Return to the official current term to make changes.';
   }
+  if(code==='RESULT_SCORE_LOCKED')return 'This subject is published and locked. Unpublish it before making score corrections.';
   if(code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_CONTEXT_INVALID'||code==='RESULT_TERM_INVALID'||code==='RESULT_ACADEMIC_CONTEXT_REQUIRED'||code==='RESULT_ACADEMIC_CONTEXT_NOT_FOUND'){
     return 'That academic context is not available for this account.';
   }

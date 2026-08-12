@@ -44,6 +44,11 @@ The initial audit recorded teacher testing as pending because public signup was 
 7. OCR uses a browser-held Gemini key and camera capture is disabled by the current Permissions-Policy. OCR must not be treated as production-ready until that boundary is corrected.
 8. The assessment UI is dynamic, but a full cross-module score validation pass is still required whenever management changes CA/exam totals.
 
+9. Published-score governance is now fail-closed for ordinary staff: teachers
+cannot edit a published subject; they must unpublish it before correction.
+Results management retains an explicit correction path. A durable score-change
+history/audit log remains a future database migration item.
+
 ## Confirmed source-level behavior
 
 - The three selected report-card layouts use the same live content builder.

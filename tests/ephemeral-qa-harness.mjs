@@ -32,6 +32,9 @@ function allowed(user, action, classKey) {
 function api(userId, action, payload = {}) {
   const user = actor(userId);
   assert.equal(allowed(user, action, payload.class_key), true, `${user.role} may perform ${action}`);
+  if (action === 'scores.enter' && db.published_subjects.some((row) => row.class_key === payload.class_key && row.subject_index === payload.subject_index && row.term === payload.term && row.academic_session === payload.academic_session && row.published)) {
+    assert.equal(user.role, 'admin', 'published scores are locked for teachers');
+  }
   if (action === 'students.upsert') {
     const row = { id: payload.id || `${QA_PREFIX}student-${db.students.length + 1}`, archived: false, ...payload };
     const index = db.students.findIndex((item) => item.id === row.id);
@@ -90,6 +93,8 @@ assert.equal(api(primaryTeacher.id, 'read.students', { class_key: primaryTeacher
 assert.throws(() => api(jssTeacher.id, 'scores.enter', scorePayload), /may perform/, 'teacher cannot write another class');
 assert.throws(() => api(primaryTeacher.id, 'settings.app_config.update'), /may perform/, 'teacher cannot change management settings');
 api(admin.id, 'results.publish', { class_key: primaryTeacher.classKey, subject_index: 0, term: '1st Term', academic_session: '2026/2027', published: true });
+assert.throws(() => api(primaryTeacher.id, 'scores.enter', { ...scorePayload, ca1: 20 }), /published scores are locked/, 'teacher cannot edit a published score');
+assert.equal(total(api(admin.id, 'scores.enter', { ...scorePayload, ca1: 20 })), 85, 'management can correct a published score');
 assert.equal(api(admin.id, 'read.scores', { student_id: student.id }).length, 1, 'admin reads persisted score');
 
 for (const template of templates) {
