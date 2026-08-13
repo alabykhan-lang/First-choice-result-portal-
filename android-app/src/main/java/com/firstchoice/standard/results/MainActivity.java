@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Build;
 import android.graphics.Color;
-import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -30,6 +29,8 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
+    private boolean printInProgress = false;
+    private boolean reportCardPrintInProgress = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,7 +118,7 @@ public class MainActivity extends Activity {
                 request.addRequestHeader("User-Agent", userAgent);
                 request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "wts-result-download");
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "first-choice-result-download");
                 DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
                 manager.enqueue(request);
             }
@@ -127,6 +128,29 @@ public class MainActivity extends Activity {
             webView.loadUrl(PORTAL_URL);
         } else {
             webView.restoreState(savedInstanceState);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null && printInProgress) {
+            final boolean restoreReportCard = reportCardPrintInProgress;
+            printInProgress = false;
+            reportCardPrintInProgress = false;
+            webView.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (webView == null) return;
+                    String script = "(function(){"
+                        + "try{window.dispatchEvent(new Event('afterprint'));}catch(e){}"
+                        + (restoreReportCard
+                            ? "try{var p=document.getElementById('page-card');if(p){document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active','print-active');});p.classList.add('active','print-active');var n=document.getElementById('ni-card');if(n){document.querySelectorAll('.ni').forEach(function(x){x.classList.remove('active');});n.classList.add('active');}try{sessionStorage.setItem('wts_page','card');}catch(e){}}}catch(e){}"
+                            : "")
+                        + "})();";
+                    webView.evaluateJavascript(script, null);
+                }
+            }, 250);
         }
     }
 
@@ -155,16 +179,42 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void printCurrentPage() {
+    private void printCurrentPage(final boolean reportCard) {
         if (webView == null) return;
+
+        // Native WebView printing does not reliably emit browser beforeprint,
+        // so trigger it explicitly. The portal uses it to fit each report card
+        // cleanly onto one A4 page.
+        webView.evaluateJavascript(
+            "(function(){try{window.dispatchEvent(new Event('beforeprint'));}catch(e){}})();",
+            null
+        );
+
         PrintManager printManager = (PrintManager) getSystemService(Context.PRINT_SERVICE);
-        String jobName = getString(R.string.app_name) + " Print";
+        String jobName = getString(R.string.app_name) + (reportCard ? " Report Card" : " Print");
         PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(jobName);
+
+        PrintAttributes.MediaSize mediaSize = reportCard
+            ? PrintAttributes.MediaSize.ISO_A4.asPortrait()
+            : PrintAttributes.MediaSize.ISO_A4.asLandscape();
+
         PrintAttributes attributes = new PrintAttributes.Builder()
-            .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
+            .setMediaSize(mediaSize)
+            .setMinMargins(new PrintAttributes.Margins(0, 0, 0, 0))
             .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
             .build();
+
+        printInProgress = true;
+        reportCardPrintInProgress = reportCard;
         printManager.print(jobName, adapter, attributes);
+    }
+
+    private void detectPageAndPrint() {
+        if (webView == null) return;
+        webView.evaluateJavascript(
+            "(function(){var p=document.getElementById('page-card');return !!(p&&(p.classList.contains('active')||p.classList.contains('print-active')));})()",
+            value -> printCurrentPage("true".equalsIgnoreCase(String.valueOf(value)))
+        );
     }
 
     private class PrintBridge {
@@ -173,7 +223,7 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    printCurrentPage();
+                    detectPageAndPrint();
                 }
             });
         }
