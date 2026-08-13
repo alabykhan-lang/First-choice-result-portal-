@@ -1751,12 +1751,12 @@ function restorePortalPageAfterLogin(){
   // the working sheet.
   var savedPage='',savedClass='',savedTerm='',savedSession='',savedSheet='';
   try{
-    savedPage=sessionStorage.getItem('wts_page')||'';
+    savedPage=sessionStorage.getItem('wts_page')||sessionStorage.getItem('wts_print_return_page')||'';
     savedClass=sessionStorage.getItem('wts_cls')||'';
     savedTerm=sessionStorage.getItem('wts_term')||'';
     savedSession=sessionStorage.getItem('wts_session')||'';
     savedSheet=sessionStorage.getItem('wts_sheet_idx')||'';
-    ['wts_page','wts_cls','wts_term','wts_session','wts_sheet_idx'].forEach(function(key){sessionStorage.removeItem(key);});
+    ['wts_page','wts_print_return_page','wts_cls','wts_term','wts_session','wts_sheet_idx'].forEach(function(key){sessionStorage.removeItem(key);});
   }catch(e){}
   CONTEXT_EXPLICIT=false;
   SELECTED_SESSION=null;
@@ -3970,7 +3970,13 @@ function printBroadsheet(){
 function printReportCardDocument(){
   // Some Android WebViews recreate the page when the native print sheet closes.
   // Keep the active Result Cards route available for a safe return.
-  try{sessionStorage.setItem('wts_print_return_page','card');}catch(e){}
+  try{
+    sessionStorage.setItem('wts_print_return_page','card');
+    sessionStorage.setItem('wts_page','card');
+    sessionStorage.setItem('wts_cls',CLS||'');
+    sessionStorage.setItem('wts_term',TERM||'');
+    sessionStorage.setItem('wts_session',getActiveSession()||'');
+  }catch(e){}
   window.print();
 }
 function printCard(){

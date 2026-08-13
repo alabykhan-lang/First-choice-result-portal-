@@ -24,7 +24,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_fe1e431b";
+    // Keep the native app on the current print/navigation implementation.
+    // Changing this marker also prevents WebView from reusing the old portal
+    // document that shipped with the previous Android print behavior.
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_a4print";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;
