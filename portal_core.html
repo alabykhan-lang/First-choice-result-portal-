@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded',function(){
   --radius:12px;
 }
 html{min-height:100%;background:var(--bg);overflow-x:hidden}
-body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#eef8f1 0%,#f7fbf5 48%,#fff8e8 100%);color:#1f2937;min-height:100vh;overflow-x:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#1f2937;min-height:100vh;overflow-x:hidden}
 
 /* ── SIDEBAR ── */
 #sidebar{position:fixed;top:0;left:0;width:248px;height:100vh;
@@ -92,7 +92,7 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .saved-msg.show{opacity:1}
 
 /* ── CONTENT ── */
-.content{flex:1;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(239,249,242,.7));}
+.content{flex:1;padding:24px}
 .page{display:none}
 .page.active{display:block}
 
