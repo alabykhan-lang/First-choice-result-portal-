@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded',function(){
   --radius:12px;
 }
 html{min-height:100%;background:var(--bg);overflow-x:hidden}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:#1f2937;min-height:100vh;overflow-x:hidden}
+body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#eef8f1 0%,#f7fbf5 48%,#fff8e8 100%);color:#1f2937;min-height:100vh;overflow-x:hidden}
 
 /* ── SIDEBAR ── */
 #sidebar{position:fixed;top:0;left:0;width:248px;height:100vh;
@@ -71,7 +71,7 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 
 /* ── TOPBAR ── */
 #main{margin-left:248px;min-height:100vh;min-width:0;display:flex;flex-direction:column}
-.topbar{background:var(--white);border-bottom:1px solid var(--border);
+.topbar{background:linear-gradient(105deg,#f2fbf5 0%,#fffdf4 52%,#eef7ff 100%);border-bottom:1px solid rgba(7,91,56,.16);
   padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:50;gap:10px}
 .tb-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
@@ -92,7 +92,7 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .saved-msg.show{opacity:1}
 
 /* ── CONTENT ── */
-.content{flex:1;padding:24px}
+.content{flex:1;padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(239,249,242,.7));}
 .page{display:none}
 .page.active{display:block}
 
@@ -1128,8 +1128,9 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div class="tbl-head"><h3>Promotion thresholds</h3></div>
         <div style="padding:16px">
           <div class="promotion-note">
-            Management controls the next-session transition from this portal. Students who meet their class minimum average are promoted, while students below it are detained/retained. Early years, primary classes and the remaining secondary transitions follow the approved class progression map.
+            Promotion is based on the completed third-term result. Management may choose pure third-term performance or the cumulative result across all three terms.
           </div>
+          <div class="fg" style="max-width:420px;margin:14px 0"><label>Promotion result basis</label><select class="sel" id="promotion-basis" onchange="savePromotionBasis()"><option value="third_term">Pure 3rd Term result</option><option value="cumulative">Cumulative 1st–3rd Term result</option></select><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">This choice is used for promotion calculations; report-card display remains separately controlled in Report cards.</small></div>
           <div style="overflow-x:auto">
             <table class="data-table promotion-table" style="font-size:.78rem;min-width:560px">
               <thead>
@@ -1145,7 +1146,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           </div>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap obsolete-setting" style="margin-bottom:0">
         <div class="tbl-head"><h3>Assessment scope</h3></div>
         <div style="padding:16px">
           <div class="fg"><label>Assessment entry mode</label><select class="sel" id="assessment-scope"><option value="full_class">Full class</option><option value="department">Department / subject group</option></select></div>
@@ -1163,7 +1164,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentConfig()" style="margin-top:12px">Save mark structure</button>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap obsolete-setting" style="margin-bottom:0">
         <div class="tbl-head"><h3>Senior Secondary departments</h3></div>
         <div style="padding:16px">
           <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:10px">SS1, SS2 and SS3 are always available. Turn on only the departments used by the school; the selected departments will appear after opening each SS class.</p>
@@ -1604,7 +1605,9 @@ var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees
 function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(String(action||'').toLowerCase())>-1;}
 
 function getStoredAuthSession(){
-  return MEMORY_AUTH_SESSION;
+  if(MEMORY_AUTH_SESSION)return MEMORY_AUTH_SESSION;
+  try{var raw=localStorage.getItem('first_choice_auth_session');if(raw){MEMORY_AUTH_SESSION=JSON.parse(raw);return MEMORY_AUTH_SESSION;}}catch(e){}
+  return null;
 }
 function getAuthHeaders(){
   var session=getStoredAuthSession();
@@ -1612,8 +1615,9 @@ function getAuthHeaders(){
 }
 function storeAuthSession(session){
   MEMORY_AUTH_SESSION=session||null;
+  try{if(session)localStorage.setItem('first_choice_auth_session',JSON.stringify(session));else localStorage.removeItem('first_choice_auth_session');}catch(e){}
 }
-function clearAuthSession(){MEMORY_AUTH_SESSION=null;}
+function clearAuthSession(){MEMORY_AUTH_SESSION=null;try{localStorage.removeItem('first_choice_auth_session');}catch(e){}}
 function authMessage(payload){
   var code=payload&&payload.code;
   if(code==='INVITE_CODE_INVALID')return 'That invite code is not valid.';
@@ -2364,6 +2368,8 @@ function getPromotionCfg(){
   });
   return out;
 }
+function getPromotionBasis(){return getCfg().promotionBasis==='cumulative'?'cumulative':'third_term';}
+function savePromotionBasis(){if(!hasResultPermission('result_settings.manage'))return;var cfg=getCfg();cfg.promotionBasis=document.getElementById('promotion-basis').value==='cumulative'?'cumulative':'third_term';saveCfg(cfg);showToast('Promotion basis saved.');}
 function getPromotionRule(classKey){
   return getPromotionCfg()[classKey]||defaultPromotionRule(classKey);
 }
@@ -2389,6 +2395,19 @@ function calcPromotionAverage(studentId,classKey,scores,published){
   if(!count)return'';
   return Math.round((total/count)*10)/10;
 }
+function calcCumulativePromotionAverage(studentId,classKey,scores,published){
+  var terms=['1st Term','2nd Term','3rd Term'],values=[];
+  terms.forEach(function(term){
+    var rows=(scores||[]).filter(function(row){return String(row.student_id)===String(studentId)&&String(row.term)===term;});
+    var total=0,count=0;(DEPTS[classKey]?DEPTS[classKey].subjects:[]).forEach(function(_,idx){
+      if(published&&published.length&&!published.some(function(p){return Number(p.subject_index)===idx;}))return;
+      var row=rows.find(function(s){return Number(s.subject_index)===idx;});var mark=computeTotal(row||null);
+      if(mark!==''){total+=mark;count++;}
+    });
+    if(count)values.push(total/count);
+  });
+  return values.length?Math.round(values.reduce(function(a,v){return a+v;},0)/values.length*10)/10:'';
+}
 function classifyPromotion(avg,rule){
   if(!isSecondaryClass(rule.classKey))return{action:rule.target?'promote':'hold',label:rule.target?'Automatic carry forward':'Final class'};
   if(avg==='')return{action:'hold',label:'No result data'};
@@ -2404,17 +2423,20 @@ function loadPromotionClassPlan(classKey,sourceSession,targetSession){
   var rule=getPromotionRule(classKey);
   rule.classKey=classKey;
   var sourceKey=dbClassKey(classKey,sourceSession);
+  var cumulative=getPromotionBasis()==='cumulative';
   return Promise.all([
     dbGet('students?class_key=eq.'+encodeURIComponent(sourceKey)+'&order=created_at.asc'),
     dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term'),
-    dbGet('published_subjects?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term')
+    dbGet('published_subjects?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term'),
+    cumulative?dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.1st%20Term'):Promise.resolve([]),
+    cumulative?dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.2nd%20Term'):Promise.resolve([])
   ]).then(function(res){
-    var students=res[0]||[],scores=res[1]||[],published=res[2]||[];
+    var students=res[0]||[],scores=res[1]||[],published=res[2]||[],allScores=scores.concat(res[3]||[],res[4]||[]);
     return {
       classKey:classKey,
       rule:rule,
       students:students.map(function(st){
-        var avg=calcPromotionAverage(st.id,classKey,scores,published);
+        var avg=cumulative?calcCumulativePromotionAverage(st.id,classKey,allScores,published):calcPromotionAverage(st.id,classKey,scores,published);
         var status=classifyPromotion(avg,rule);
         return {student:st,avg:avg,status:status,target:rule.target};
       })
@@ -4780,6 +4802,7 @@ function renderSettings(){
   if(el('cfg-fee-jss'))el('cfg-fee-jss').value=sc.fees.junior_secondary||'';
   if(el('cfg-fee-ss'))el('cfg-fee-ss').value=sc.fees.senior_secondary||'';
   var cfg=getCfg();var sch=cfg.school||DEFAULT_SCHOOL;var sig=cfg.signature||{};var secs=getSections();
+  var basis=document.getElementById('promotion-basis');if(basis)basis.value=getPromotionBasis();
   document.getElementById('cfg-name').value=sch.name||'';
   document.getElementById('cfg-addr').value=sch.addr||'';
   document.getElementById('cfg-phone').value=sch.phone||'';
@@ -4842,7 +4865,7 @@ function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Assessment scope|Continuous assessment|Senior Secondary departments/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){var developerOnly=c.id==='gemini-settings-card';c.style.display=(c.getAttribute('data-settings-group')===tab&&(!developerOnly||CURRENT_USER&&CURRENT_USER._role==='developer'))?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
