@@ -1130,7 +1130,11 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div class="promotion-note">
             Promotion is based on the completed third-term result. Management may choose pure third-term performance or the cumulative result across all three terms.
           </div>
-          <div class="fg" style="max-width:420px;margin:14px 0"><label>Promotion result basis</label><select class="sel" id="promotion-basis" onchange="savePromotionBasis()"><option value="third_term">Pure 3rd Term result</option><option value="cumulative">Cumulative 1st–3rd Term result</option></select><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">This choice is used for promotion calculations; report-card display remains separately controlled in Report cards.</small></div>
+          <div class="fg" style="max-width:520px;margin:14px 0"><label>Promotion result basis</label><select class="sel" id="promotion-basis" onchange="savePromotionBasis()"><option value="third_term">Pure 3rd Term result</option><option value="cumulative">Cumulative 1st–3rd Term result</option></select><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">This choice is used for promotion calculations; report-card display remains separately controlled in Report cards.</small></div>
+          <div class="promotion-gate" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:12px;border:1px solid #cfe8d8;border-radius:12px;background:#f5fff8;margin-bottom:14px;max-width:620px">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:.8rem"><input type="checkbox" id="promotion-gate-enabled" onchange="savePromotionGate()"/> Activate promotion percentage gate</label>
+            <div class="fg" style="width:150px;margin:0"><label>Minimum percentage</label><input class="inp" id="promotion-gate-pct" type="number" min="0" max="100" value="40" onchange="savePromotionGate()"/></div>
+          </div>
           <div style="overflow-x:auto">
             <table class="data-table promotion-table" style="font-size:.78rem;min-width:560px">
               <thead>
@@ -1480,6 +1484,12 @@ body.result-context-read-only .results-history-readable{display:flex}
         </div>
       </div>
       <p class="sec-title">Attendance</p>
+      <div class="profile-promotion-control" style="padding:12px;border:1px solid #cfe8d8;border-radius:12px;background:#f5fff8;margin:0 0 16px">
+        <p class="sec-title" style="margin:0 0 8px">Promotion / class transfer</p>
+        <label style="font-size:.76rem;font-weight:700;color:var(--gray)">Management destination override</label>
+        <select class="sel" id="pf-promotion-target" onchange="saveProfilePromotionTarget(this)"><option value="">Use promotion calculation</option></select>
+        <small style="display:block;color:var(--gray);font-size:.7rem;margin-top:5px">Use this only when management needs to retain or transfer this individual student to a different class.</small>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div class="fee-field"><label>Days Opened</label><input class="inp" type="number" id="pf-att-open"/></div>
         <div class="fee-field"><label>Days Present</label><input class="inp" type="number" id="pf-att-present" oninput="pfAbsent()"/></div>
@@ -1605,9 +1615,7 @@ var RESULT_MUTATING_ACTIONS=['scores.enter','traits.enter','remarks.enter','fees
 function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(String(action||'').toLowerCase())>-1;}
 
 function getStoredAuthSession(){
-  if(MEMORY_AUTH_SESSION)return MEMORY_AUTH_SESSION;
-  try{var raw=localStorage.getItem('first_choice_auth_session');if(raw){MEMORY_AUTH_SESSION=JSON.parse(raw);return MEMORY_AUTH_SESSION;}}catch(e){}
-  return null;
+  return MEMORY_AUTH_SESSION;
 }
 function getAuthHeaders(){
   var session=getStoredAuthSession();
@@ -1615,9 +1623,8 @@ function getAuthHeaders(){
 }
 function storeAuthSession(session){
   MEMORY_AUTH_SESSION=session||null;
-  try{if(session)localStorage.setItem('first_choice_auth_session',JSON.stringify(session));else localStorage.removeItem('first_choice_auth_session');}catch(e){}
 }
-function clearAuthSession(){MEMORY_AUTH_SESSION=null;try{localStorage.removeItem('first_choice_auth_session');}catch(e){}}
+function clearAuthSession(){MEMORY_AUTH_SESSION=null;}
 function authMessage(payload){
   var code=payload&&payload.code;
   if(code==='INVITE_CODE_INVALID')return 'That invite code is not valid.';
@@ -1779,7 +1786,8 @@ function doLogout(){
 
 function checkSession(){
   var session=getStoredAuthSession();
-  if(!session||!session.access_token){showAuthScreen();return;}
+  // The server HttpOnly cookie is the source of truth. Do not require an
+  // in-memory token, otherwise every browser refresh returns to sign-in.
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
     loginSuccess(localUserFromPayload(payload),'local');
@@ -2336,7 +2344,7 @@ var DEPTS={
 };
 var ALL_CLASSES=['creche','kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
 var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
-var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-general'];
+var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-science'];
 var DEFAULT_PROMOTION_TARGETS={
   creche:'kg1',kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
   primary1:'primary2',primary2:'primary3',primary3:'primary4',primary4:'primary5',primary5:'jss1',
@@ -2370,6 +2378,8 @@ function getPromotionCfg(){
 }
 function getPromotionBasis(){return getCfg().promotionBasis==='cumulative'?'cumulative':'third_term';}
 function savePromotionBasis(){if(!hasResultPermission('result_settings.manage'))return;var cfg=getCfg();cfg.promotionBasis=document.getElementById('promotion-basis').value==='cumulative'?'cumulative':'third_term';saveCfg(cfg);showToast('Promotion basis saved.');}
+function getPromotionGate(){var cfg=getCfg();return{enabled:cfg.promotionGateEnabled===true,pct:Math.max(0,Math.min(100,Number(cfg.promotionGatePct===undefined?40:cfg.promotionGatePct)||0))};}
+function savePromotionGate(){if(!hasResultPermission('result_settings.manage'))return;var cfg=getCfg(),enabled=Boolean(document.getElementById('promotion-gate-enabled')&&document.getElementById('promotion-gate-enabled').checked),pct=Math.max(0,Math.min(100,Number((document.getElementById('promotion-gate-pct')||{}).value||0)));cfg.promotionGateEnabled=enabled;cfg.promotionGatePct=pct;saveCfg(cfg);showToast(enabled?'Promotion percentage gate activated.':'Promotion percentage gate is off.');}
 function getPromotionRule(classKey){
   return getPromotionCfg()[classKey]||defaultPromotionRule(classKey);
 }
@@ -2411,6 +2421,8 @@ function calcCumulativePromotionAverage(studentId,classKey,scores,published){
 function classifyPromotion(avg,rule){
   if(!isSecondaryClass(rule.classKey))return{action:rule.target?'promote':'hold',label:rule.target?'Automatic carry forward':'Final class'};
   if(avg==='')return{action:'hold',label:'No result data'};
+  var gate=getPromotionGate();
+  if(gate.enabled&&avg<gate.pct)return{action:'repeat',label:'Below '+gate.pct+'% promotion gate'};
   if(PROMOTION_THRESHOLD_CLASSES.indexOf(rule.classKey)>-1&&avg<Number(rule.minimumPct||rule.repeatPct||0))return{action:'repeat',label:'Detained / retained'};
   return{action:'promote',label:'Carry forward'};
 }
@@ -2458,10 +2470,13 @@ function renderPromotionPlan(plans,sessions){
       else if(item.status.action==='probation')probation++;
       else if(item.status.action==='promote'&&item.target)promote++;
       else held++;
+      var override=(getCfg().promotionOverrides||{})[String(item.student.id)]||{};
+      var selectedTarget=override.target||moveTarget||'';
+      var targetOptions=[''].concat(ALL_CLASSES).map(function(key){return '<option value="'+key+'" '+(key===selectedTarget?'selected':'')+'>'+(key?(DEPTS[key]?escapeHtml(DEPTS[key].label):escapeHtml(key)):'Hold / repeat')+'</option>';}).join('');
       rows.push('<tr>'
         +'<td><strong>'+escapeHtml(item.student.name)+'</strong><div style="font-size:.68rem;color:var(--gray)">'+escapeHtml(item.student.admno||'')+'</div></td>'
         +'<td>'+escapeHtml(DEPTS[plan.classKey]?DEPTS[plan.classKey].label:plan.classKey)+'</td>'
-        +'<td>'+(canMove?escapeHtml(DEPTS[moveTarget]?DEPTS[moveTarget].label:moveTarget):'--')+'</td>'
+        +'<td><select class="sel promotion-student-target" data-student-id="'+escapeHtml(item.student.id)+'" onchange="savePromotionOverride(this)" style="min-width:150px">'+targetOptions+'</select></td>'
         +'<td style="font-weight:700">'+(item.avg!==''?item.avg+'%':'--')+'</td>'
         +'<td><span class="badge '+(item.status.action==='repeat'||item.status.action==='hold'?'badge-red':item.status.action==='probation'?'badge-gold':'badge-green')+'">'+item.status.label+'</span></td>'
         +'</tr>');
@@ -2475,6 +2490,7 @@ function renderPromotionPlan(plans,sessions){
   if(body)body.innerHTML=rows.length?'<table class="data-table" style="font-size:.76rem"><thead><tr><th>Student</th><th>Current</th><th>Target</th><th>Average</th><th>Status</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>':'<div class="empty"><h3>No Students</h3><p>No students found in the source session classes.</p></div>';
   if(wrap)wrap.classList.add('show');
 }
+function savePromotionOverride(select){if(!hasResultPermission('result_settings.manage'))return;var cfg=getCfg();if(!cfg.promotionOverrides)cfg.promotionOverrides={};cfg.promotionOverrides[String(select.getAttribute('data-student-id'))]={target:select.value};saveCfg(cfg);showToast('Student promotion destination saved.');}
 function previewCarryForward(){
   showToast('Promotion is previewed here. Use Activate Next Term when management is ready.','error');
 }
@@ -3785,6 +3801,7 @@ function renderProfile(s){
   document.getElementById('pf-gender').textContent=s.gender;
   document.getElementById('pf-age').textContent=s.age||'--';
   document.getElementById('pf-class').textContent=DEPTS[CLS]?DEPTS[CLS].label:CLS;
+  var promotionTarget=document.getElementById('pf-promotion-target');if(promotionTarget){var override=(getCfg().promotionOverrides||{})[String(s.id)]||{};promotionTarget.innerHTML='<option value="">Use promotion calculation</option>'+ALL_CLASSES.map(function(key){return '<option value="'+key+'">'+escapeHtml(DEPTS[key]?DEPTS[key].label:key)+'</option>';}).join('');promotionTarget.value=override.target||'';promotionTarget.disabled=!hasResultPermission('result_settings.manage');}
   var photo=document.getElementById('pf-photo');
   photo.innerHTML=s.photo?'<img src="'+s.photo+'" style="width:100%;height:100%;object-fit:cover"/>':'&#128100;';
 
@@ -3849,6 +3866,7 @@ function renderProfile(s){
 
   document.getElementById('modal-profile').style.display='flex';
 }
+function saveProfilePromotionTarget(select){if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to transfer a student.','error');return;}var cfg=getCfg();if(!cfg.promotionOverrides)cfg.promotionOverrides={};if(select.value)cfg.promotionOverrides[String(currentProfileSid)]={target:select.value};else delete cfg.promotionOverrides[String(currentProfileSid)];saveCfg(cfg);showToast(select.value?'Student transfer destination saved.':'Promotion override cleared.');}
 
 function pfAbsent(){
   var op=Number(document.getElementById('pf-att-open').value||0);
@@ -4803,6 +4821,7 @@ function renderSettings(){
   if(el('cfg-fee-ss'))el('cfg-fee-ss').value=sc.fees.senior_secondary||'';
   var cfg=getCfg();var sch=cfg.school||DEFAULT_SCHOOL;var sig=cfg.signature||{};var secs=getSections();
   var basis=document.getElementById('promotion-basis');if(basis)basis.value=getPromotionBasis();
+  var gate=getPromotionGate(),gateEl=document.getElementById('promotion-gate-enabled'),gatePct=document.getElementById('promotion-gate-pct');if(gateEl)gateEl.checked=gate.enabled;if(gatePct)gatePct.value=gate.pct;
   document.getElementById('cfg-name').value=sch.name||'';
   document.getElementById('cfg-addr').value=sch.addr||'';
   document.getElementById('cfg-phone').value=sch.phone||'';
@@ -4933,7 +4952,7 @@ function renderPromotionCfg(){
   tbody.innerHTML=PROMOTION_THRESHOLD_CLASSES.map(function(key){
     var rule=pc[key];
     return'<tr>'
-      +'<td><strong>'+DEPTS[key].label+'</strong></td>'
+      +'<td><strong>'+escapeHtml(DEPTS[key]?DEPTS[key].label:key)+'</strong></td>'
       +'<td><span class="badge badge-green">'+escapeHtml(DEPTS[rule.target]?DEPTS[rule.target].label:rule.target||'Final class')+'</span></td>'
       +'<td><input class="inp" type="number" min="0" max="100" id="promo-min-pct-'+key+'" value="'+Number(rule.minimumPct||rule.repeatPct||0)+'" style="width:110px"/></td>'
       +'<td><span class="badge badge-red">Detained / retained</span></td>'
