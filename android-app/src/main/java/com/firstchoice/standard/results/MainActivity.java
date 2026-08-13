@@ -25,7 +25,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_fe1e431b";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_a4print";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;
@@ -161,7 +161,7 @@ public class MainActivity extends Activity {
         String jobName = getString(R.string.app_name) + " Print";
         PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(jobName);
         PrintAttributes attributes = new PrintAttributes.Builder()
-            .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
+            .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
             .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
             .build();
         printManager.print(jobName, adapter, attributes);

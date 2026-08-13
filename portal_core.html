@@ -516,8 +516,8 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 
 /* ── PRINT ── */
 @media print{
-  @page{size:A4 landscape;margin:8mm}
-  @page reportcard{size:A4 portrait;margin:5mm}
+  @page{size:A4 portrait;margin:8mm}
+  @page reportcard{size:A4 portrait;margin:8mm}
   #sidebar,#main .topbar,.btn,.no-print,#bottom-nav,
   #sb-overlay,.card-sel-bar,.stu-selector{display:none!important}
   #main{margin-left:0!important}
@@ -534,13 +534,17 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   #rc-wrap{overflow:visible!important}
   .report-card{
     page:reportcard;
-    width:100%!important;
-    max-width:none!important;
-    margin:0!important;
+    width:194mm!important;
+    max-width:194mm!important;
+    min-height:281mm!important;
+    margin:0 auto!important;
     box-sizing:border-box!important;
     break-inside:avoid!important;
     page-break-inside:avoid!important;
     transform-origin:top left!important;
+    overflow:hidden!important;
+    background:#fff!important;
+    box-shadow:none!important;
   }
   #rc-wrap>.report-card:not(:last-child){
     break-after:page;
@@ -1768,6 +1772,16 @@ function restorePortalPageAfterLogin(){
         var idx=Number(savedSheet);
         if(savedSheet!==''&&isFinite(idx)&&idx>=0&&idx<subjects().length)openSheet(idx);
       })
+      .catch(function(){goHome();});
+    return;
+  }
+  if(savedPage==='card'&&savedClass&&DEPTS[savedClass]&&savedTerm&&savedSession){
+    CLS=savedClass;TERM=savedTerm;SELECTED_SESSION=savedSession;CONTEXT_EXPLICIT=true;
+    CONTEXT_READ_ONLY=!isOfficialOpenContext(savedSession,savedTerm);
+    setMode(true);syncContextDisplay();
+    setResultContext(savedClass,savedSession,savedTerm,CONTEXT_READ_ONLY)
+      .then(function(){return loadClass(savedClass,null,true);})
+      .then(function(){navTo('card',document.getElementById('ni-card'));})
       .catch(function(){goHome();});
     return;
   }
@@ -3953,11 +3967,17 @@ function printBroadsheet(){
     class_key:dbClassKey(CLS),term:TERM,academic_session:getActiveSession()
   }).then(function(){window.print();}).catch(function(){showToast('Export permission required','error');});
 }
+function printReportCardDocument(){
+  // Some Android WebViews recreate the page when the native print sheet closes.
+  // Keep the active Result Cards route available for a safe return.
+  try{sessionStorage.setItem('wts_print_return_page','card');}catch(e){}
+  window.print();
+}
 function printCard(){
   if(!hasResultPermission('report_cards.generate')){showToast('Report-card printing is available to school administrators only.','error');return;}
   var sid=document.getElementById('rc-stu').value;
   if(!sid){showToast('Select a student first','error');return;}
-  refreshCard({silent:true}).then(function(){window.print();}).catch(function(error){
+  refreshCard({silent:true}).then(function(){printReportCardDocument();}).catch(function(error){
     showToast(error&&error.code?resultContextMessage(error):'Report-card permission required','error');
   });
 }
@@ -4236,7 +4256,14 @@ function resetReportCardPrintFit(){
   });
 }
 window.addEventListener('beforeprint',fitReportCardsToOnePage);
-window.addEventListener('afterprint',resetReportCardPrintFit);
+window.addEventListener('afterprint',function(){
+  resetReportCardPrintFit();
+  // Printing must finish on the report-card page, not the Home page.
+  try{sessionStorage.removeItem('wts_print_return_page');}catch(e){}
+  if(document.getElementById('page-card')&&document.getElementById('page-card').classList.contains('print-active')){
+    navTo('card',document.getElementById('ni-card'));
+  }
+});
 
 // ============================================================
 // RESULT CARD
@@ -4366,7 +4393,7 @@ function printAll(){
         pubSet
       );
     }).join('');
-    setTimeout(function(){fitReportCardsToOnePage();window.print();},400);
+    setTimeout(function(){fitReportCardsToOnePage();printReportCardDocument();},400);
   }).catch(function(e){
     hideLoad();showToast('Failed to load cards','error');
     console.error('printAll error:',e);
