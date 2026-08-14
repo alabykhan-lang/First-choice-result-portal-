@@ -36,7 +36,10 @@ module.exports = async function aiOcr(req, res) {
       await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'failed', p_input_tokens: inputTokens, p_output_tokens: outputTokens, p_billable_tokens: total, p_credits_charged: 0, p_error_code: 'GEMINI_REQUEST_FAILED' }, token);
       return sendJson(res, 502, { ok: false, code: 'AI_PROVIDER_REQUEST_FAILED', message: data.error?.message || 'AI provider request failed.' });
     }
-    const credits = Math.max(1, Math.ceil(total / 100));
+    // Pilot billing is deliberately simple: one successful OCR job consumes
+    // one internal credit. Token metadata is retained for later cost analysis,
+    // but it does not affect the customer's bill yet.
+    const credits = 1;
     const settled = await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'succeeded', p_input_tokens: inputTokens, p_output_tokens: outputTokens, p_billable_tokens: total, p_credits_charged: credits, p_error_code: null }, token);
     const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
     return sendJson(res, 200, { ok: true, text, usage: { input_tokens: inputTokens, output_tokens: outputTokens, billable_tokens: total, credits_charged: settled?.credits_charged || credits } });

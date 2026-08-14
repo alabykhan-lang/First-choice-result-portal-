@@ -13,11 +13,21 @@ module.exports = async function aiUsage(req, res) {
     // scopes the wallet and ledger to the authenticated user's school.
     const schoolId = profiles?.[0]?.school_id;
     if (!schoolId) return sendJson(res, 403, { ok: false, code: 'RESULT_PERMISSION_DENIED' });
-    const [wallet, usage] = await Promise.all([
+    const [wallet, usage, staff] = await Promise.all([
       supabaseRest('ai_wallets?school_id=eq.' + encodeURIComponent(schoolId) + '&limit=1', {}, token),
       supabaseRest('ai_usage_ledger?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,user_id,operation,status,input_tokens,output_tokens,billable_tokens,credits_charged,created_at,completed_at&order=created_at.desc&limit=100', {}, token),
+      supabaseRest('staff_profiles?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,display_name,email', {}, token),
     ]);
-    return sendJson(res, 200, { ok: true, wallet: wallet?.[0] || null, usage: usage || [] });
+    const rows = usage || [];
+    const names = Object.fromEntries((staff || []).map((person) => [person.id, person.display_name || person.email || 'Staff member']));
+    const byStaff = {};
+    rows.forEach((row) => {
+      const key = row.user_id || 'unknown';
+      if (!byStaff[key]) byStaff[key] = { user_id: key, name: names[key] || 'Staff member', scans: 0, failed: 0, credits: 0 };
+      if (row.status === 'succeeded') { byStaff[key].scans += 1; byStaff[key].credits += Number(row.credits_charged || 0); }
+      if (row.status === 'failed') byStaff[key].failed += 1;
+    });
+    return sendJson(res, 200, { ok: true, wallet: wallet?.[0] || null, usage: rows, summary: { total_scans: rows.filter((row) => row.status === 'succeeded').length, failed_scans: rows.filter((row) => row.status === 'failed').length, by_staff: Object.values(byStaff) } });
   } catch (error) {
     return sendJson(res, error.status || 500, { ok: false, code: error.payload?.code || 'AI_USAGE_UNAVAILABLE', message: error.message });
   }
