@@ -66,9 +66,24 @@ where config ? 'gemini_key';
 
 create index if not exists ai_usage_school_created_idx on public.ai_usage_ledger(school_id, created_at desc);
 
+create table if not exists public.ai_credit_pack_requests (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid not null references public.school_accounts(id) on delete cascade,
+  user_id uuid not null references auth.users(id),
+  amount_naira integer not null check (amount_naira in (1000, 2000, 5000, 10000, 15000, 20000)),
+  credits_requested integer not null check (credits_requested in (200, 400, 1000, 2000, 3000, 4000)),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  review_note text
+);
+
+create index if not exists ai_credit_requests_school_created_idx on public.ai_credit_pack_requests(school_id, created_at desc);
+
 alter table public.school_accounts enable row level security;
 alter table public.ai_wallets enable row level security;
 alter table public.ai_usage_ledger enable row level security;
+alter table public.ai_credit_pack_requests enable row level security;
 
 drop policy if exists "School members read own school" on public.school_accounts;
 create policy "School members read own school" on public.school_accounts for select to authenticated
@@ -79,8 +94,31 @@ using (school_id = (select school_id from public.staff_profiles where id = (sele
 drop policy if exists "School members read usage" on public.ai_usage_ledger;
 create policy "School members read usage" on public.ai_usage_ledger for select to authenticated
 using (school_id = (select school_id from public.staff_profiles where id = (select auth.uid())));
+drop policy if exists "School members read credit requests" on public.ai_credit_pack_requests;
+create policy "School members read credit requests" on public.ai_credit_pack_requests for select to authenticated
+using (school_id = (select school_id from public.staff_profiles where id = (select auth.uid())));
 
-grant select on public.school_accounts, public.ai_wallets, public.ai_usage_ledger to authenticated;
+grant select on public.school_accounts, public.ai_wallets, public.ai_usage_ledger, public.ai_credit_pack_requests to authenticated;
+
+create or replace function public.ai_request_credit_pack(
+  p_amount_naira integer, p_credits integer
+) returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_user uuid := (select auth.uid()); v_school uuid; v_id uuid;
+begin
+  if v_user is null then return jsonb_build_object('ok', false, 'code', 'RESULT_SESSION_REQUIRED'); end if;
+  if not ((p_amount_naira=1000 and p_credits=200) or (p_amount_naira=2000 and p_credits=400) or (p_amount_naira=5000 and p_credits=1000) or (p_amount_naira=10000 and p_credits=2000) or (p_amount_naira=15000 and p_credits=3000) or (p_amount_naira=20000 and p_credits=4000)) then
+    return jsonb_build_object('ok', false, 'code', 'AI_PACK_INVALID');
+  end if;
+  select school_id into v_school from staff_profiles where id=v_user and suspended=false;
+  if v_school is null then return jsonb_build_object('ok', false, 'code', 'RESULT_PERMISSION_DENIED'); end if;
+  if exists (select 1 from ai_credit_pack_requests where school_id=v_school and status='pending') then
+    return jsonb_build_object('ok', false, 'code', 'AI_PACK_REQUEST_PENDING');
+  end if;
+  insert into ai_credit_pack_requests(school_id,user_id,amount_naira,credits_requested) values(v_school,v_user,p_amount_naira,p_credits) returning id into v_id;
+  return jsonb_build_object('ok', true, 'request_id', v_id, 'status', 'pending');
+end $$;
+revoke all on function public.ai_request_credit_pack(integer,integer) from public;
+grant execute on function public.ai_request_credit_pack(integer,integer) to authenticated;
 
 create or replace function public.ai_reserve_credits(
   p_operation text, p_model text, p_idempotency_key text, p_estimated_credits integer

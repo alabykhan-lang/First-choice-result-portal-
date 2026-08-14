@@ -24,4 +24,8 @@ Use a simple linear package model while real school usage is being observed:
 
 One credit is charged only when the OCR result is successfully applied to the portal. A failed extraction, cancelled scan, or result that is not applied is not charged. The fifth successful application counts like every other successful application; there is no token-based customer meter in this pilot.
 
+The Settings dashboard displays remaining balance as a percentage bar: 100% means the school has its full approved allowance, and 0% means AI scanning is stopped while the ordinary portal remains available. Managers can click a package to create a pending request. The dashboard then shows “Waiting for developer confirmation”; no credits are added until the developer confirms the payment and credits the school wallet.
+
+For the manual pilot, confirm a request in the controlled Supabase layer by reviewing `ai_credit_pack_requests`, setting its `status` to `approved`, and adding `credits_requested` to that school's `ai_wallets.paid_credits` in the same controlled operation. Set `reviewed_at` and an optional `review_note`. The manager will see the updated balance after refreshing the dashboard.
+
 The first payment workflow is intentionally manual: the portal shows the shared balance and a “Contact developer to renew” mail action. Paystack/Flutterwave can be added later without changing the token ledger contract.
