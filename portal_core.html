@@ -2,11 +2,7 @@
 <html lang="en">
 <head>
 <script>
-// Keep the portal locked until the local Supabase Auth session is validated.
-document.addEventListener('DOMContentLoaded',function(){
-  var a=document.getElementById('auth-screen');
-  if(a)a.style.display='flex';
-});
+// The startup splash stays visible while the HttpOnly session is checked.
 </script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -99,6 +95,10 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 
 /* ── AUTH ── */
 #auth-screen{position:fixed;inset:0;background:radial-gradient(circle at 15% 10%,#1a8b58 0,#075b38 45%,#043d26 100%);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+#startup-splash{position:fixed;inset:0;background:radial-gradient(circle at 15% 10%,#1a8b58 0,#075b38 45%,#043d26 100%);z-index:10000;display:flex;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px}
+#startup-splash img{width:112px;height:112px;object-fit:contain;background:#fff;border-radius:18px;padding:8px;display:block;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+#startup-splash h1{font-family:'Playfair Display',serif;color:#ffe8a0;font-size:1.25rem}
+#startup-splash p{margin-top:8px;color:rgba(255,255,255,.72);font-size:.82rem}
 .auth-box{background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .auth-header{background:linear-gradient(145deg,#075b38,#0b7a4b);padding:28px 24px 20px;text-align:center;border-bottom:4px solid var(--gold)}
 .auth-header img{width:80px;height:80px;object-fit:contain;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
@@ -640,6 +640,8 @@ body.result-context-read-only .results-history-readable{display:flex}
 </head>
 <body>
 
+<div id="startup-splash" aria-live="polite"><div><img src="first-choice-logo.jpg" alt="First Choice Standard Schools"/><h1>First Choice Standard Schools</h1><p>Opening your result portal…</p></div></div>
+
 <!-- SIDEBAR -->
 <!-- AUTH SCREEN -->
 <div id="auth-screen">
@@ -1089,7 +1091,7 @@ body.result-context-read-only .results-history-readable{display:flex}
     <div class="settings-grid">
       <div class="tbl-wrap" id="ai-usage-settings-card" style="margin-bottom:0">
         <div class="tbl-head"><h3>AI Score Scanner &amp; Usage</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
-        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-metrics" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><div id="ai-usage-staff" style="margin-top:12px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Pilot billing counts successful OCR jobs. One successful scan uses one AI credit; provider token details are kept for our internal review.</p><button class="btn btn-primary btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer to renew</button></div>
+        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-metrics" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><div id="ai-usage-staff" style="margin-top:12px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Pilot billing counts only a successfully applied OCR job. One successful application uses one AI credit; failed, cancelled, or unapplied scans use none.</p><p style="font-size:.72rem;color:var(--gray);margin:8px 0 0">Suggested packs: ₦5,000 = 1,000 credits · ₦10,000 = 2,000 · ₦15,000 = 3,000 · ₦20,000 = 4,000.</p><button class="btn btn-primary btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer to renew</button></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
@@ -1731,6 +1733,7 @@ function loginSuccess(user,mode){
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+  var splash=document.getElementById('startup-splash');if(splash)splash.style.display='none';
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
   document.getElementById('sb-user-name').textContent=user.full_name;
@@ -1816,7 +1819,7 @@ function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
     loginSuccess(localUserFromPayload(payload),'local');
-  }).catch(function(){clearAuthSession();showAuthScreen();});
+  }).catch(function(){clearAuthSession();var splash=document.getElementById('startup-splash');if(splash)splash.style.display='none';showAuthScreen();});
 }
 
 function setAuthMode(mode){
@@ -3471,7 +3474,7 @@ function runStudentNameOCR(evt){
   reader.onload=function(e){var src=e.target.result||'';var parts=src.split(',');var mime=file.type||'image/jpeg';var prompt='Read every student name from this school class list or record-book image. Return a JSON array only, with one object per visible student: {"name":"FULL NAME"}. Do not include serial numbers, headings, totals, or other text.';showLoad('Reading student names...');
     requestAIScan({operation:'ocr_student_names',image_base64:parts[1]||src,mime_type:mime,prompt:prompt})
       .then(function(data){var txt=data.text||'';var match=txt.match(/\[[\s\S]*\]/);if(!match)throw new Error('No names found');var rows=JSON.parse(match[0]);var names=rows.map(function(x){return typeof x==='string'?x:x.name;}).filter(Boolean);var box=document.getElementById('bulk-student-names');var current=box.value.trim();box.value=(current?current+'\n':'')+names.join('\n');updateBulkStudentCount();hideLoad();showToast(names.length+' student names extracted. Review before saving.');})
-      .catch(function(err){hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
+      .catch(function(err){settleAIUsage('failed');hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
       .finally(function(){evt.target.value='';});
   };reader.readAsDataURL(file);
 }
@@ -3479,7 +3482,7 @@ function saveBulkStudents(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   var box=document.getElementById('bulk-student-names');var names=(box.value||'').split(/\r?\n/).map(function(x){return x.trim().replace(/^\d+[.)-]\s*/,'');}).filter(Boolean);var unique=[];var seen={};names.forEach(function(n){var key=normName(n);if(key&&!seen[key]){seen[key]=true;unique.push(n);}});if(!unique.length){showToast('Add at least one student name.','error');return;}if(unique.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}if(!isCentralAuth()){showToast('Management access is required for student administration.','error');return;}
   var gender=document.getElementById('bulk-gender').value||'Not specified',age=document.getElementById('bulk-age').value||'';var rows=[];unique.forEach(function(name){rows.push({name:name,gender:gender,admno:generateAdmissionNumber(),house:null,age:age,photo:''});DB_STUDENTS[CLS]=DB_STUDENTS[CLS]||[];DB_STUDENTS[CLS].push(rows[rows.length-1]);});showLoad('Saving '+rows.length+' students...');
-  Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}})})).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
+  Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}})})).then(function(){return settleAIUsage('succeeded');}).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){settleAIUsage('failed');hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
 }
 function demoAvatar(name,index){
   var initials=String(name||'DP').split(/\s+/).filter(Boolean).slice(0,2).map(function(x){return x.charAt(0).toUpperCase();}).join('')||'DP';var colors=['#087f5b','#d99a00','#155e75','#7c3aed','#be123c'];var bg=colors[index%colors.length];var svg='<svg xmlns="http://www.w3.org/2000/svg" width="240" height="280" viewBox="0 0 240 280"><rect width="240" height="280" rx="24" fill="#f1f8f4"/><circle cx="120" cy="92" r="58" fill="'+bg+'" opacity=".18"/><circle cx="120" cy="92" r="42" fill="'+bg+'"/><text x="120" y="108" text-anchor="middle" font-family="Arial" font-size="32" font-weight="700" fill="white">'+initials+'</text><path d="M48 250c8-52 34-78 72-78s64 26 72 78" fill="'+bg+'" opacity=".9"/><text x="120" y="268" text-anchor="middle" font-family="Arial" font-size="11" fill="#345">DEMO PROFILE</text></svg>';return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
@@ -3521,7 +3524,7 @@ function deleteStu(id){
   hideLoad();
   showToast('Management access is required for student administration.','error');
 }
-function closeModal(id){document.getElementById(id).style.display='none';}
+function closeModal(id){if((id==='modal-ocr'||id==='modal-bulk-students')&&AI_PENDING_LEDGER_ID)settleAIUsage('failed');document.getElementById(id).style.display='none';}
 
 // ============================================================
 // SCORE ENTRY - SUBJECT CENTRIC
@@ -5135,6 +5138,16 @@ window.addEventListener('DOMContentLoaded',function(){
   document.addEventListener('visibilitychange',function(){
     if(!document.hidden)refreshPortalState();
   });
+  var pullStart=0,pullTriggered=false,pullBusy=false;
+  document.addEventListener('touchstart',function(event){
+    if(window.scrollY<=2&&event.touches&&event.touches[0]){pullStart=event.touches[0].clientY;pullTriggered=false;}
+  },{passive:true});
+  document.addEventListener('touchmove',function(event){
+    if(!pullStart||pullBusy||!event.touches||!event.touches[0])return;
+    var distance=event.touches[0].clientY-pullStart;
+    if(distance>78&&!pullTriggered){pullTriggered=true;pullBusy=true;showToast('Refreshing portal…');Promise.resolve(refreshPortalState({force:true})).finally(function(){setTimeout(function(){pullBusy=false;},700);});}
+  },{passive:true});
+  document.addEventListener('touchend',function(){pullStart=0;},{passive:true});
   setInterval(function(){
     if(CURRENT_USER&&!document.hidden)refreshPortalState();
   },60000);
@@ -5171,6 +5184,7 @@ var OCR_IDX=-1;
 var OCR_MATCHES=[];
 var OCR_IMG_B64='';
 var OCR_IMG_MIME='image/jpeg';
+var AI_PENDING_LEDGER_ID='';
 
 
 function forceSyncSettings(){
@@ -5189,8 +5203,12 @@ function requestAIScan(payload){
   payload.idempotency_key='ai-'+Date.now()+'-'+Math.random().toString(36).slice(2);
   return fetch('/api/ai-ocr',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify(payload),cache:'no-store'})
     .then(function(res){return res.text().then(function(raw){var data={};try{data=raw?JSON.parse(raw):{};}catch(e){data={};}if(!res.ok||data.ok===false){throw data;}return data;});})
-    .then(function(data){refreshAIUsage();return data;})
+    .then(function(data){if(data.ledger_id)AI_PENDING_LEDGER_ID=data.ledger_id;refreshAIUsage();return data;})
     .catch(function(error){if(error&&error.code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');throw new Error((error&&error.message)||'AI scanner is unavailable.');});
+}
+function settleAIUsage(status){
+  var ledger=AI_PENDING_LEDGER_ID;if(!ledger)return Promise.resolve();
+  return fetch('/api/ai-settle',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify({ledger_id:ledger,status:status}),cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});}).then(function(){if(AI_PENDING_LEDGER_ID===ledger)AI_PENDING_LEDGER_ID='';refreshAIUsage();});
 }
 function refreshAIUsage(){
   if(!isCentralAuth())return;
@@ -5219,6 +5237,7 @@ function openOCRScanner(){
 }
 
 function resetOCR(){
+  if(AI_PENDING_LEDGER_ID)settleAIUsage('failed');
   document.getElementById('ocr-step1').style.display='block';
   document.getElementById('ocr-step2').style.display='none';
   document.getElementById('ocr-preview-wrap').style.display='none';
@@ -5280,9 +5299,10 @@ function runOCR(){
   .then(function(data){
     document.getElementById('ocr-loading').style.display='none';
     var txt='';
-    try{txt=data.candidates[0].content.parts[0].text;}
+    try{txt=data.text||data.candidates[0].content.parts[0].text;}
     catch(e){
       showToast('No response from the AI scanner.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5299,6 +5319,7 @@ function runOCR(){
     if(!jsonStr&&txt.trim().startsWith('['))jsonStr=txt.trim();
     if(!jsonStr){
       showToast('AI responded but could not find scores in image. Ensure photo shows names and score columns clearly.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5306,17 +5327,20 @@ function runOCR(){
     try{rows=JSON.parse(jsonStr);}
     catch(e){
       showToast('Could not read the data. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
     if(!rows.length){
       showToast('No scores found in image. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
     buildOCRPreview(rows,students);
   })
   .catch(function(err){
+    settleAIUsage('failed');
     document.getElementById('ocr-loading').style.display='none';
     document.getElementById('ocr-preview-wrap').style.display='block';
     showToast('Error: '+(err.message||'Network error. Check connection.'),'error');
@@ -5391,11 +5415,12 @@ function applyOCRScores(){
     var sc=(DB_SCORES[s.id]||{})[idx]||{ca1:'',ca2:'',ca3:'',exam:''};
     if(sc.ca1===''&&sc.ca2===''&&sc.ca3===''&&sc.exam==='')return Promise.resolve();
     return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam);
-  })).then(function(){
+  })).then(function(){return settleAIUsage('succeeded');}).then(function(){
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast(applied+' students scored via OCR scan');
   }).catch(function(){
+    settleAIUsage('failed');
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast('Scores applied. Tap Save Draft to sync.','error');

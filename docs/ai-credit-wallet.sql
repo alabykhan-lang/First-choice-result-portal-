@@ -112,7 +112,7 @@ create or replace function public.ai_settle_credits(
 declare v_user uuid := (select auth.uid()); v_school uuid; v_row ai_usage_ledger%rowtype; v_free integer; v_paid integer; v_charge integer; v_free_charge integer;
 begin
   select school_id into v_school from staff_profiles where id = v_user and suspended = false;
-  select * into v_row from ai_usage_ledger where id = p_ledger_id and school_id = v_school for update;
+  select * into v_row from ai_usage_ledger where id = p_ledger_id and school_id = v_school and user_id = v_user for update;
   if not found then return jsonb_build_object('ok', false, 'code', 'AI_LEDGER_NOT_FOUND'); end if;
   if v_row.status <> 'reserved' then return jsonb_build_object('ok', true, 'replayed', true); end if;
   v_charge := greatest(0, least(v_row.credits_reserved, coalesce(p_credits_charged,0)));
