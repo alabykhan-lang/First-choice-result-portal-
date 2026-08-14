@@ -29,3 +29,11 @@ The Settings dashboard displays remaining balance as a percentage bar: 100% mean
 For the manual pilot, confirm a request in the controlled Supabase layer by reviewing `ai_credit_pack_requests`, setting its `status` to `approved`, and adding `credits_requested` to that school's `ai_wallets.paid_credits` in the same controlled operation. Set `reviewed_at` and an optional `review_note`. The manager will see the updated balance after refreshing the dashboard.
 
 The first payment workflow is intentionally manual: the portal shows the shared balance and a “Contact developer to renew” mail action. Paystack/Flutterwave can be added later without changing the token ledger contract.
+
+## Management reset
+
+School administrators and the developer can open Settings → AI usage → AI Wallet Management, enter the free and paid allowance, and choose “Reset wallet counters”. This sets the allowance, clears the used counters, and preserves the usage ledger for audit history. Teachers cannot see or call this action.
+
+## Zero-balance behavior
+
+When the remaining balance reaches zero, the reserve function returns `AI_CREDITS_EXHAUSTED`; no ledger reservation or charge is created. OCR is blocked with a renewal message, while ordinary classes, scores, reports, settings, and navigation remain available. A manager can restore the allowance from the management reset panel without coding.
