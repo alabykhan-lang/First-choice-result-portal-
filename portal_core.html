@@ -1265,9 +1265,12 @@ body.result-context-read-only .results-history-readable{display:flex}
               </optgroup>
               <optgroup label="Senior Secondary">
                 <option value="ss1-general">SS1 General</option>
+                <option value="ss1-science">SS1 Science</option><option value="ss1-arts">SS1 Arts</option>
+                <option value="ss1-business">SS1 Commercial / Business</option>
                 <option value="ss2-science">SS2 Science</option><option value="ss2-arts">SS2 Arts</option>
                 <option value="ss2-business">SS2 Business</option>
                 <option value="ss3-science">SS3 Science</option><option value="ss3-arts">SS3 Arts</option>
+                <option value="ss3-business">SS3 Commercial / Business</option>
               </optgroup>
             </select>
           </div>
@@ -2374,7 +2377,7 @@ var DEFAULT_PROMOTION_TARGETS={
   jss1:'jss2',jss2:'jss3',jss3:'ss1-general',
   'ss1-general':'ss2-science',
   'ss2-science':'ss3-science','ss2-arts':'ss3-arts','ss2-business':'ss3-arts',
-  'ss3-science':'','ss3-arts':''
+  'ss3-science':'','ss3-arts':'','ss3-business':''
 };
 function escapeHtml(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
