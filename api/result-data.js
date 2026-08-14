@@ -36,10 +36,11 @@ async function currentStaff(token) {
     // profile bootstrap was installed. Establish the protected profile before
     // running management queries so RLS can recognise the manager.
     if (['developer', 'admin'].includes(fallback.role)) {
+      const schools = await supabaseRest('school_accounts?select=id&active=eq.true&order=created_at.asc&limit=1', {}, token);
       const created = await supabaseRest('staff_profiles', {
         method: 'POST',
         prefer: 'resolution=merge-duplicates,return=representation',
-        body: fallback,
+        body: Object.assign({}, fallback, { school_id: schools?.[0]?.id }),
       }, token);
       return { user, profile: created?.[0] || fallback };
     }

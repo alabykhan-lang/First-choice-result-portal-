@@ -46,10 +46,11 @@ async function enrichUser(user, accessToken) {
       }
       return { user, profile: rows[0] };
     }
+    const schools = await supabaseRest('school_accounts?select=id&active=eq.true&order=created_at.asc&limit=1', {}, accessToken);
     const profile = await supabaseRest('staff_profiles', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates,return=representation',
-      body: fallback,
+      body: Object.assign({}, fallback, { school_id: schools?.[0]?.id }),
     }, accessToken);
     return { user, profile: profile?.[0] || fallback };
   } catch (error) {
