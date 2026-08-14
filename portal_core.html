@@ -1655,7 +1655,7 @@ function resultAuthRequest(method,body){
 
 function resultDataRequest(action,payload){
   if(CONTEXT_READ_ONLY&&isResultMutationAction(action))return Promise.reject({code:'RESULT_ACADEMIC_CONTEXT_READ_ONLY'});
-  return fetch('/api/result-data',{
+  function requestData(){return fetch('/api/result-data',{
     method:'POST',credentials:'same-origin',
      headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),
     body:JSON.stringify({action:action,payload:payload||{}}),
@@ -1668,6 +1668,21 @@ function resultDataRequest(action,payload){
       if(!res.ok||data.ok===false){data.http_status=res.status;throw data;}
       return data;
     });
+  });}
+  return requestData().catch(function(error){
+    var code=String(error&&error.code||'');
+    var message=String(error&&error.message||'');
+    if(error&&error.http_status===401&&(code==='RESULT_SESSION_NOT_ACTIVE'||/jwt expired|token.*expired/i.test(message))){
+      return resultAuthRequest('GET').then(function(session){
+        if(!session||!session.user)throw error;
+        var refreshed=localUserFromPayload(session);
+        CURRENT_USER=refreshed;
+        CURRENT_AUTH_MODE='local';
+        CURRENT_PERMISSIONS=Array.isArray(refreshed._permissions)?refreshed._permissions:CURRENT_PERMISSIONS;
+        return requestData();
+      });
+    }
+    throw error;
   });
 }
 
@@ -4842,7 +4857,7 @@ function renderSettings(){
   var geminiCard=document.getElementById('gemini-settings-card');
   if(geminiCard)geminiCard.style.display=(CURRENT_USER&&CURRENT_USER._role==='developer')?'':'none';
   renderBillConfig();
-  var ki=document.getElementById('gemini-key-input');if(ki){var gk=getGeminiKey();if(gk)ki.value=gk;}
+  var ki=document.getElementById('gemini-key-input');if(ki){var gk=getGeminiKey();if(gk){ki.value='';ki.placeholder='Saved API key loaded';ki.dataset.keyLoaded='true';}}
   var sc=getSessionCfg();
   var el=function(id){return document.getElementById(id);};
   if(el('cfg-resumption'))el('cfg-resumption').value=sc.resumption||'';
@@ -5189,11 +5204,14 @@ function saveGeminiKey(){
   var key=input?input.value.trim():'';
   if(!key){showToast('Enter a Gemini API key first.','error');return;}
   window._geminiKey=key;
-  if(input)input.value='';
+  try{sessionStorage.setItem('wts_gemini_key',key);}catch(e){}
+  if(input){input.value='';input.placeholder='Saved API key loaded';input.dataset.keyLoaded='true';}
   showToast('OCR provider key loaded for this session.');
 }
 function getGeminiKey(){
   if(!CURRENT_USER||CURRENT_USER._role!=='developer')return '';
+  if(window._geminiKey)return window._geminiKey;
+  try{window._geminiKey=sessionStorage.getItem('wts_gemini_key')||'';}catch(e){}
   return window._geminiKey||'';
 }
 

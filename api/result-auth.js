@@ -5,6 +5,7 @@ const {
   clearSessionCookie,
   readJsonBody,
   requestOriginAllowed,
+  refreshTokenFromRequest,
   sendJson,
   setSessionCookie,
   supabaseAuthRequest,
@@ -87,10 +88,21 @@ module.exports = async function resultAuth(req, res) {
   if (!requestOriginAllowed(req)) return sendJson(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
 
   if (req.method === 'GET') {
-    const token = bearerTokenFromRequest(req);
+    let token = bearerTokenFromRequest(req);
     if (!token) return sendJson(res, 200, { ok: true, auth_mode: 'local', configured: true });
     try {
-      const user = await supabaseAuthRequest('user', undefined, token);
+      let user;
+      try {
+        user = await supabaseAuthRequest('user', undefined, token);
+      } catch (error) {
+        const refreshToken = refreshTokenFromRequest(req);
+        if (!refreshToken) throw error;
+        const refreshed = await supabaseAuthRequest('token?grant_type=refresh_token', { refresh_token: refreshToken });
+        token = refreshed.access_token;
+        if (!token) throw error;
+        setSessionCookie(res, token, refreshed.refresh_token || refreshToken);
+        user = refreshed.user || await supabaseAuthRequest('user', undefined, token);
+      }
       const enriched = await enrichUser(user, token);
       return sendJson(res, 200, { ok: true, auth_mode: 'local', user, staff_profile: enriched.profile });
     } catch (error) {
@@ -115,14 +127,14 @@ module.exports = async function resultAuth(req, res) {
     if (body.action === 'login') {
       const payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
       const enriched = await enrichUser(payload.user, payload.access_token);
-      setSessionCookie(res, payload.access_token);
+      setSessionCookie(res, payload.access_token, payload.refresh_token);
       return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: true, user: payload.user, staff_profile: enriched.profile });
     }
     if (body.action === 'register') {
       if (!(await inviteIsValid(body.invite_code))) return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
       const payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'first_choice_result' } });
       const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token) : { profile: fallbackProfile(payload.user) };
-      if (payload.access_token) setSessionCookie(res, payload.access_token);
+      if (payload.access_token) setSessionCookie(res, payload.access_token, payload.refresh_token);
       return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: Boolean(payload.access_token), user: payload.user || null, staff_profile: enriched.profile });
     }
     if (body.action === 'forgot_password') {

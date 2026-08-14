@@ -5,6 +5,7 @@ const SUPABASE_KEY = process.env.FIRST_CHOICE_SUPABASE_PUBLISHABLE_KEY
   || process.env.FIRST_CHOICE_SUPABASE_ANON_KEY
   || 'sb_publishable_o8331Jqp1ip_ka3dlXpt6w_Rej8W3lr';
 const COOKIE_NAME = 'wts_result_session';
+const REFRESH_COOKIE_NAME = 'wts_result_refresh';
 const SESSION_MAX_AGE = 8 * 60 * 60;
 const DEFAULT_ALLOWED_ORIGINS = new Set([
   'https://wts-result-system.vercel.app',
@@ -58,12 +59,21 @@ function sessionFromRequest(req) {
 }
 
 function setSessionCookie(res, sessionId, sessionSecret) {
-  const value = encodeURIComponent(sessionSecret ? `${sessionId}.${sessionSecret}` : sessionId);
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${value}; Path=/; Max-Age=${SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`);
+  const accessValue = encodeURIComponent(sessionId);
+  const cookies = [`${COOKIE_NAME}=${accessValue}; Path=/; Max-Age=${SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`];
+  if (sessionSecret) cookies.push(`${REFRESH_COOKIE_NAME}=${encodeURIComponent(sessionSecret)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+  res.setHeader('Set-Cookie', cookies);
 }
 
 function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+  res.setHeader('Set-Cookie', [
+    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
+    `${REFRESH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
+  ]);
+}
+
+function refreshTokenFromRequest(req) {
+  return parseCookies(req)[REFRESH_COOKIE_NAME] || null;
 }
 
 async function readJsonBody(req) {
@@ -168,6 +178,7 @@ function authStatus(code) {
 
 module.exports = {
   COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
   allowedOrigins,
   authStatus,
   clearSessionCookie,
@@ -177,6 +188,7 @@ module.exports = {
   sessionFromRequest,
   setSecurityHeaders,
   setSessionCookie,
+  refreshTokenFromRequest,
   bearerTokenFromRequest,
   supabaseAuthRequest,
   supabaseRest,
