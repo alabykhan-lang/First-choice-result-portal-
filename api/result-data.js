@@ -275,6 +275,20 @@ async function handleAction(action, payload, token) {
       ca3: payload.ca3 ?? null,
       exam: payload.exam ?? null,
     };
+    if (existing?.[0]?.id && payload.allow_correction !== true) {
+      const fields = ['ca1', 'ca2', 'ca3', 'exam'];
+      const changesSavedScore = fields.some((field) => {
+        const previous = existing[0][field];
+        const next = scoreBody[field];
+        return previous !== null && previous !== undefined && (next === null || Number(previous) !== Number(next));
+      });
+      if (changesSavedScore) {
+        const error = new Error('This score is already saved. Confirm the edit before saving it.');
+        error.status = 409;
+        error.payload = { code: 'RESULT_SCORE_EDIT_CONFIRMATION_REQUIRED', message: error.message };
+        throw error;
+      }
+    }
     if (existing?.[0]?.id) {
       const rows = await supabaseRest(`scores?id=eq.${encodeURIComponent(existing[0].id)}`, {
         method: 'PATCH',

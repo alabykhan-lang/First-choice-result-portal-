@@ -1097,6 +1097,10 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div class="tbl-head"><h3>AI Wallet Management</h3></div>
         <div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Reset the school allowance directly. This clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="100" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="1000" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div>
       </div>
+      <div class="tbl-wrap" id="ai-alert-management-card" style="margin-bottom:0;display:none">
+        <div class="tbl-head"><h3>AI Email Alerts</h3></div>
+        <div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Receive one alert when credits are low and one when they reach zero.</p><label style="font-size:.7rem;color:var(--gray)">Administrator email<input class="inp" id="ai-alert-email" type="email" placeholder="admin@example.com" style="margin-top:4px"/></label><button class="btn btn-outline btn-sm" type="button" onclick="saveAIAlertEmail()" style="margin-top:10px">Save alert email</button></div>
+      </div>
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
         <div style="padding:16px">
@@ -2617,6 +2621,8 @@ var CHARTS={};
 var SCORE_DRAFTS={};          // key -> values entered but not confirmed by server
 var SCORE_SAVE_TIMERS={};     // key -> debounce timer
 var SCORE_SAVE_VERSIONS={};   // key -> latest local draft version
+var SCORE_EDIT_CONFIRMED={};  // persisted score fields explicitly approved for editing
+var SCORE_CLEAR_CONFIRMED={}; // persisted score fields explicitly approved for clearing
 
 function scoreCellValue(value){
   return value===null||value===undefined?'':value;
@@ -2627,6 +2633,8 @@ function scoreDraftKey(studentId,subjectIdx){
 function clearScoreDrafts(){
   Object.keys(SCORE_SAVE_TIMERS).forEach(function(key){clearTimeout(SCORE_SAVE_TIMERS[key]);});
   SCORE_DRAFTS={};
+  SCORE_EDIT_CONFIRMED={};
+  SCORE_CLEAR_CONFIRMED={};
   SCORE_SAVE_TIMERS={};
   SCORE_SAVE_VERSIONS={};
 }
@@ -3578,6 +3586,8 @@ function scoreDraft(studentId,subjectIdx){
   var persisted=scorePersisted(studentId,subjectIdx);
   return Object.assign({ca1:null,ca2:null,ca3:null,exam:null},persisted,SCORE_DRAFTS[key]||{});
 }
+function scoreCorrectionKey(studentId,subjectIdx,field){return scoreDraftKey(studentId,subjectIdx)+'|'+field;}
+function scoreCorrectionApproved(studentId,subjectIdx){var prefix=scoreDraftKey(studentId,subjectIdx)+'|';return Object.keys(SCORE_EDIT_CONFIRMED).some(function(key){return key.indexOf(prefix)===0&&SCORE_EDIT_CONFIRMED[key]===true;});}
 function scoreNumber(value){
   if(value===''||value===null||value===undefined)return null;
   var number=Number(value);
@@ -3632,6 +3642,7 @@ function confirmedScoreResponse(studentId,subjectIdx,response,version){
 }
 function scoreSaveMessage(error){
   var code=error&&error.code;
+  if(code==='RESULT_SCORE_EDIT_CONFIRMATION_REQUIRED')return 'This saved score needs an intentional edit confirmation before it can change.';
   if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY')return 'Save failed — this previous or closed academic context is read-only.';
   if(code==='RESULT_TERM_NOT_ACTIVE'||code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_TERM_INVALID')return 'Save failed — not recorded: select the selected class, session and term again.';
   if(code==='RESULT_ACADEMIC_SESSION_NOT_ACTIVE'||code==='RESULT_CONTEXT_INVALID')return 'Save failed — not recorded: select the selected academic session again.';
@@ -3648,7 +3659,7 @@ function queueScoreSave(studentId,subjectIdx){
     var version=SCORE_SAVE_VERSIONS[key]||0;
     var score=scoreDraft(studentId,subjectIdx);
     scoreStatus(studentId,subjectIdx,'Saving…','var(--gold2)');
-    dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam)
+    dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam,scoreCorrectionApproved(studentId,subjectIdx))
       .then(function(response){
         return confirmedScoreResponse(studentId,subjectIdx,response,version);
       })
@@ -3716,6 +3727,20 @@ function openSheet(idx){
       }
       inp.classList.remove('over-limit');
       var key=scoreDraftKey(sid,idx);
+      var persisted=scorePersisted(sid,idx),previous=scoreCellValue(persisted[field]);
+      var savedValue=previous!==''&&previous!==null&&previous!==undefined;
+      var changedSavedValue=savedValue&&(raw===null||Number(previous)!==Number(raw));
+      if(changedSavedValue){
+        var correctionKey=scoreCorrectionKey(sid,idx,field);
+        if(!SCORE_EDIT_CONFIRMED[correctionKey]){
+          if(!confirm('This score is already saved. Do you want to edit it?')){inp.value=previous;scoreStatus(sid,idx,'Saved','var(--g1)');return;}
+          SCORE_EDIT_CONFIRMED[correctionKey]=true;
+        }
+        if(raw===null&&!SCORE_CLEAR_CONFIRMED[correctionKey]){
+          if(!confirm('Clear the saved '+field.toUpperCase()+' score for this student?')){inp.value=previous;scoreStatus(sid,idx,'Saved','var(--g1)');return;}
+          SCORE_CLEAR_CONFIRMED[correctionKey]=true;
+        }
+      }
       var draft=scoreDraft(sid,idx);
       draft[field]=raw;
       SCORE_DRAFTS[key]=draft;
@@ -3736,7 +3761,7 @@ function closeSheet(){
   renderScoreGrid();
 }
 
-function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
+function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam,allowCorrection){
   // Convert empty strings to null; never send NaN or a browser-only value.
   function n(v){
     if(v===''||v===null||v===undefined)return null;
@@ -3752,7 +3777,7 @@ function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
       subject_index:subjectIdx,
       term:TERM,
       academic_session:getActiveSession(),
-      ca1:d.ca1,ca2:d.ca2,ca3:d.ca3,exam:d.exam
+      ca1:d.ca1,ca2:d.ca2,ca3:d.ca3,exam:d.exam,allow_correction:allowCorrection===true
     });
   }
   return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
@@ -3769,7 +3794,7 @@ function saveDraft(){
     var version=SCORE_SAVE_VERSIONS[key];
     var score=scoreDraft(student.id,idx);
     scoreStatus(student.id,idx,'Saving…','var(--gold2)');
-    return dbUpsertScore(student.id,idx,score.ca1,score.ca2,score.ca3,score.exam)
+    return dbUpsertScore(student.id,idx,score.ca1,score.ca2,score.ca3,score.exam,scoreCorrectionApproved(student.id,idx))
       .then(function(response){
         return confirmedScoreResponse(student.id,idx,response,version);
       });
@@ -4929,7 +4954,7 @@ function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','AI usage'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=card.id==='ai-wallet-management-card'||/AI Score/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=card.id==='ai-wallet-management-card'||card.id==='ai-alert-management-card'||/AI Score/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=(c.getAttribute('data-settings-group')===tab)?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
@@ -5240,7 +5265,7 @@ function refreshAIUsage(){
     if(summary)summary.textContent='School AI balance: '+remaining+' credits remaining ('+used+' used of '+total+'). '+(remaining?'All authorised teachers share this balance.':'AI scanning is paused; contact the developer to renew.');
     var percent=total>0?Math.max(0,Math.min(100,Math.round((remaining/total)*100))):0;var bar=document.getElementById('ai-usage-bar');var pct=document.getElementById('ai-usage-percent');var rem=document.getElementById('ai-usage-remaining');if(bar){bar.style.width=percent+'%';bar.style.background=percent<=10?'#dc2626':percent<=25?'#d97706':'linear-gradient(90deg,#087f5b,#55c98b)';}if(pct)pct.textContent=percent+'%';if(rem)rem.textContent=remaining+' credits remaining of '+total;
     var metrics=document.getElementById('ai-usage-metrics');if(metrics)metrics.innerHTML='<span class="badge badge-green">'+Number(data.summary&&data.summary.total_scans||0)+' successful scans</span><span class="badge">'+Number(data.summary&&data.summary.failed_scans||0)+' failed</span><span class="badge badge-gold">'+used+' credits used</span>';
-    var management=document.getElementById('ai-wallet-management-card');if(management){var allowed=CURRENT_USER&&['admin','developer'].indexOf(CURRENT_USER._role)>-1;management.style.display=allowed?'':'none';var freeInput=document.getElementById('ai-reset-free');var paidInput=document.getElementById('ai-reset-paid');if(freeInput&&document.activeElement!==freeInput)freeInput.value=Number(w.free_credits||0);if(paidInput&&document.activeElement!==paidInput)paidInput.value=Number(w.paid_credits||0);}
+    var management=document.getElementById('ai-wallet-management-card');var alertManagement=document.getElementById('ai-alert-management-card');if(management){var allowed=CURRENT_USER&&['admin','developer'].indexOf(CURRENT_USER._role)>-1;management.style.display=allowed?'':'none';if(alertManagement)alertManagement.style.display=allowed?'':'none';var freeInput=document.getElementById('ai-reset-free');var paidInput=document.getElementById('ai-reset-paid');var alertInput=document.getElementById('ai-alert-email');if(freeInput&&document.activeElement!==freeInput)freeInput.value=Number(w.free_credits||0);if(paidInput&&document.activeElement!==paidInput)paidInput.value=Number(w.paid_credits||0);if(alertInput&&document.activeElement!==alertInput)alertInput.value=String((getCfg()||{}).aiAlertEmail||'amb.adigun002@gmail.com');}
     var requestStatus=document.getElementById('ai-credit-request-status');var latest=(data.requests||[])[0];if(requestStatus&&latest){var label=latest.status==='approved'?'Approved — credits will appear after confirmation is completed':latest.status==='rejected'?'Declined — contact the developer for help':'Waiting for developer confirmation';requestStatus.innerHTML='<div style="padding:9px 10px;border-radius:9px;background:'+(latest.status==='approved'?'#effcf3':latest.status==='rejected'?'#fff5f5':'#fff9e8')+';font-size:.74rem"><strong>'+label+'</strong><br><span style="color:var(--gray)">₦'+Number(latest.amount_naira).toLocaleString()+' · '+Number(latest.credits_requested).toLocaleString()+' credits requested</span></div>';}else if(requestStatus)requestStatus.innerHTML='';
     var staff=document.getElementById('ai-usage-staff');if(staff)staff.innerHTML='<small style="color:var(--gray);font-weight:700">Usage by staff</small><div style="margin-top:6px">'+(data.summary&&data.summary.by_staff||[]).map(function(row){return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:5px 0;border-bottom:1px solid var(--border)"><span>'+escapeHtml(row.name)+'</span><span>'+row.scans+' scans · '+row.failed+' failed</span></div>';}).join('')+'</div>';
   }).catch(function(){});
@@ -5250,6 +5275,12 @@ function resetAIWallet(){
   var free=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-free')||{}).value||0)));var paid=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-paid')||{}).value||0)));
   if(!confirm('Reset the shared AI wallet to '+(free+paid)+' total credits and clear its used counters?'))return;
   fetch('/api/ai-credit-reset',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify({free_credits:free,paid_credits:paid}),cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});}).then(function(){showToast('AI wallet reset and synced for all authorised staff.');refreshAIUsage();}).catch(function(error){showToast((error&&error.message)||'Could not reset the AI wallet.','error');});
+}
+function saveAIAlertEmail(){
+  if(!CURRENT_USER||['admin','developer'].indexOf(CURRENT_USER._role)<0){showToast('Management access is required to change alert settings.','error');return;}
+  var email=String((document.getElementById('ai-alert-email')||{}).value||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('Enter a valid administrator email address.','error');return;}
+  var cfg=getCfg();cfg.aiAlertEmail=email;saveCfg(cfg);dbUpsertSettings('app_config',JSON.stringify(cfg)).then(function(){showToast('AI alert email saved.');}).catch(function(){showToast('Saved locally — cloud sync failed.','error');});
 }
 function contactDeveloperForAI(){
   var school=((getCfg()||{}).school||{}).name||'our school';
@@ -5428,6 +5459,15 @@ function updateOCRMatch(el){
 function applyOCRScores(){
   var assessment=getAssessmentConfig();
   var applied=0;
+  var ocrConflicts=[];
+  OCR_MATCHES.forEach(function(m){
+    if(!m.student)return;
+    var existing=scorePersisted(m.student.id,OCR_IDX);
+    assessment.caMarks.slice(0,assessment.caCount).forEach(function(mark,ci){var field='ca'+(ci+1);if(m[field]!=null&&scoreCellValue(existing[field])!==''&&Number(existing[field])!==Number(m[field]))ocrConflicts.push(m.student.name+' '+field.toUpperCase());});
+    if(m.exam!=null&&scoreCellValue(existing.exam)!==''&&Number(existing.exam)!==Number(m.exam))ocrConflicts.push(m.student.name+' Exam');
+  });
+  if(ocrConflicts.length&&!confirm('OCR will replace already-saved scores for '+ocrConflicts.length+' field(s). Do you want to continue?')){settleAIUsage('failed');showToast('OCR was not applied; saved scores were protected.','error');return;}
+  if(ocrConflicts.length){OCR_MATCHES.forEach(function(m){if(!m.student)return;var existing=scorePersisted(m.student.id,OCR_IDX);['ca1','ca2','ca3','exam'].forEach(function(field){if(m[field]!=null&&scoreCellValue(existing[field])!=='')SCORE_EDIT_CONFIRMED[scoreCorrectionKey(m.student.id,OCR_IDX,field)]=true;});});}
   OCR_MATCHES.forEach(function(m){
     if(!m.student)return;
     var sid=m.student.id;
@@ -5444,7 +5484,7 @@ function applyOCRScores(){
   Promise.all(students.map(function(s){
     var sc=(DB_SCORES[s.id]||{})[idx]||{ca1:'',ca2:'',ca3:'',exam:''};
     if(sc.ca1===''&&sc.ca2===''&&sc.ca3===''&&sc.exam==='')return Promise.resolve();
-    return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam);
+    return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam,scoreCorrectionApproved(s.id,idx));
   })).then(function(){return settleAIUsage('succeeded');}).then(function(){
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);

@@ -30,6 +30,8 @@ For the manual pilot, confirm a request in the controlled Supabase layer by revi
 
 The first payment workflow is intentionally manual: the portal shows the shared balance and a “Contact developer to renew” mail action. Paystack/Flutterwave can be added later without changing the token ledger contract.
 
+When configured, the server sends one low-balance email when the wallet crosses 10% or 100 credits remaining (whichever threshold is higher), and one zero-balance email when scanning stops. The administrator recipient is set in Settings → AI usage → AI Email Alerts. Delivery requires the server-only `RESEND_API_KEY` and, for production sending, a verified `FIRST_CHOICE_AI_ALERT_FROM` address.
+
 ## Management reset
 
 School administrators and the developer can open Settings → AI usage → AI Wallet Management, enter the free and paid allowance, and choose “Reset wallet counters”. This sets the allowance, clears the used counters, and preserves the usage ledger for audit history. Teachers cannot see or call this action.
