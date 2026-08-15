@@ -70,8 +70,8 @@ create table if not exists public.ai_credit_pack_requests (
   id uuid primary key default gen_random_uuid(),
   school_id uuid not null references public.school_accounts(id) on delete cascade,
   user_id uuid not null references auth.users(id),
-  amount_naira integer not null check (amount_naira in (1000, 2000, 5000, 10000, 15000, 20000)),
-  credits_requested integer not null check (credits_requested in (200, 400, 1000, 2000, 3000, 4000)),
+  amount_naira integer not null check (amount_naira in (5000, 10000, 15000, 20000)),
+  credits_requested integer not null check (credits_requested in (1000, 2000, 3000, 4000)),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now(),
   reviewed_at timestamptz,
@@ -106,7 +106,7 @@ create or replace function public.ai_request_credit_pack(
 declare v_user uuid := (select auth.uid()); v_school uuid; v_id uuid;
 begin
   if v_user is null then return jsonb_build_object('ok', false, 'code', 'RESULT_SESSION_REQUIRED'); end if;
-  if not ((p_amount_naira=1000 and p_credits=200) or (p_amount_naira=2000 and p_credits=400) or (p_amount_naira=5000 and p_credits=1000) or (p_amount_naira=10000 and p_credits=2000) or (p_amount_naira=15000 and p_credits=3000) or (p_amount_naira=20000 and p_credits=4000)) then
+  if not ((p_amount_naira=5000 and p_credits=1000) or (p_amount_naira=10000 and p_credits=2000) or (p_amount_naira=15000 and p_credits=3000) or (p_amount_naira=20000 and p_credits=4000)) then
     return jsonb_build_object('ok', false, 'code', 'AI_PACK_INVALID');
   end if;
   select school_id into v_school from staff_profiles where id=v_user and suspended=false;

@@ -1,7 +1,7 @@
 'use strict';
 const { bearerTokenFromRequest, readJsonBody, requestOriginAllowed, sendJson, supabaseRpc } = require('./_lib');
 
-const PACKS = new Map([[1000, 200], [2000, 400], [5000, 1000], [10000, 2000], [15000, 3000], [20000, 4000]]);
+const PACKS = new Map([[5000, 1000], [10000, 2000], [15000, 3000], [20000, 4000]]);
 
 module.exports = async function aiCreditRequest(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });

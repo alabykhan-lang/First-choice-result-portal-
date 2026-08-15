@@ -28,13 +28,11 @@ The Settings dashboard displays remaining balance as a percentage bar: 100% mean
 
 For the manual pilot, confirm a request in the controlled Supabase layer by reviewing `ai_credit_pack_requests`, setting its `status` to `approved`, and adding `credits_requested` to that school's `ai_wallets.paid_credits` in the same controlled operation. Set `reviewed_at` and an optional `review_note`. The manager will see the updated balance after refreshing the dashboard.
 
-The first payment workflow is intentionally manual: the portal shows the shared balance and a “Contact developer to renew” mail action. Paystack/Flutterwave can be added later without changing the token ledger contract.
-
-When configured, the server sends one low-balance email when the wallet crosses 10% or 100 credits remaining (whichever threshold is higher), and one zero-balance email when scanning stops. The administrator recipient is set in Settings → AI usage → AI Email Alerts. Delivery requires the server-only `RESEND_API_KEY` and, for production sending, a verified `FIRST_CHOICE_AI_ALERT_FROM` address.
+The first payment workflow is intentionally manual: the portal shows the shared balance and a “Contact developer on WhatsApp” action. Paystack/Flutterwave can be added later without changing the token ledger contract.
 
 ## Management reset
 
-School administrators and the developer can open Settings → AI usage → AI Wallet Management, enter the free and paid allowance, and choose “Reset wallet counters”. This sets the allowance, clears the used counters, and preserves the usage ledger for audit history. Teachers cannot see or call this action.
+Only the School Administrator can open Settings → AI usage → AI Wallet Management, enter the free and paid allowance, and choose “Reset wallet counters”. This sets the allowance, clears the used counters, and preserves the usage ledger for audit history. Teachers and developer accounts cannot see or call this action.
 
 ## Zero-balance behavior
 

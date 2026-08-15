@@ -9,7 +9,7 @@ async function requireManagement(token) {
   const email = String(user?.email || '').trim().toLowerCase();
   const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(user.id)}&select=role,suspended&limit=1`, {}, token);
   const profile = rows?.[0] || { role: email === DEVELOPER_EMAIL ? 'developer' : email === SCHOOL_ADMIN_EMAIL ? 'admin' : 'staff', suspended: false };
-  if (profile.suspended || !['developer', 'admin'].includes(profile.role)) {
+  if (profile.suspended || profile.role !== 'admin') {
     const error = new Error('Management access is required.'); error.status = 403; error.payload = { code: 'RESULT_PERMISSION_DENIED' }; throw error;
   }
   return user;
