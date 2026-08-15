@@ -257,6 +257,7 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   padding:5px 4px;text-align:center;font-size:.82rem;font-weight:600;
   font-family:'DM Sans',sans-serif;background:#fff}
 .sc-inp:focus{border-color:var(--g3);outline:none;background:#f0fdf4}
+.sc-inp[readonly]{background:#f3f8f4;border-color:#b8d9c2;color:var(--g1);cursor:pointer}
 .sc-inp.over-limit{border-color:#dc2626!important;background:#fff5f5!important;color:#dc2626}
 
 /* ── BROADSHEET ── */
@@ -3588,6 +3589,7 @@ function scoreDraft(studentId,subjectIdx){
 }
 function scoreCorrectionKey(studentId,subjectIdx,field){return scoreDraftKey(studentId,subjectIdx)+'|'+field;}
 function scoreCorrectionApproved(studentId,subjectIdx){var prefix=scoreDraftKey(studentId,subjectIdx)+'|';return Object.keys(SCORE_EDIT_CONFIRMED).some(function(key){return key.indexOf(prefix)===0&&SCORE_EDIT_CONFIRMED[key]===true;});}
+function savedScoreInputAttr(value){return scoreCellValue(value)!==''?' readonly title="Saved score — tap to edit"':'';}
 function scoreNumber(value){
   if(value===''||value===null||value===undefined)return null;
   var number=Number(value);
@@ -3700,10 +3702,10 @@ function openSheet(idx){
     html+='<div class="sheet-row" style="background:'+(rowIdx%2===0?'#fff':'#fafafa')+'">'
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
       +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"'+savedScoreInputAttr(sc.ca1)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"'+savedScoreInputAttr(sc.ca2)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"'+savedScoreInputAttr(sc.ca3)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"'+savedScoreInputAttr(sc.exam)+' />'
       +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(total!==''?total:'--')+'</span>'
       +'<span id="sg-'+s.id+'" style="text-align:center;font-weight:700;font-size:.78rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.g||'--')+'</span>'
       +'<span id="sr-'+s.id+'" style="text-align:center;font-size:.75rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.r||'--')+'</span>'
@@ -3711,6 +3713,15 @@ function openSheet(idx){
   });
   document.getElementById('sheet-rows').innerHTML=html;
   document.querySelectorAll('#sheet-rows .sc-inp').forEach(function(inp){
+    inp.addEventListener('click',function(){
+      if(!inp.hasAttribute('readonly'))return;
+      var sid=inp.getAttribute('data-sid'),field=inp.getAttribute('data-field'),correctionKey=scoreCorrectionKey(sid,idx,field);
+      if(!confirm('This score is already saved. Do you want to edit it?'))return;
+      inp.removeAttribute('readonly');
+      inp.title='Editing saved score';
+      SCORE_EDIT_CONFIRMED[correctionKey]=true;
+      inp.focus();
+    });
     inp.addEventListener('input',function(){
       var sid=inp.getAttribute('data-sid');
       var field=inp.getAttribute('data-field');
