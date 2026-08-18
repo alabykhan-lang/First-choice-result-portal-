@@ -2,11 +2,7 @@
 <html lang="en">
 <head>
 <script>
-// Keep the portal locked until the local Supabase Auth session is validated.
-document.addEventListener('DOMContentLoaded',function(){
-  var a=document.getElementById('auth-screen');
-  if(a)a.style.display='flex';
-});
+// The startup splash stays visible while the HttpOnly session is checked.
 </script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -99,6 +95,10 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 
 /* ── AUTH ── */
 #auth-screen{position:fixed;inset:0;background:radial-gradient(circle at 15% 10%,#1a8b58 0,#075b38 45%,#043d26 100%);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+#startup-splash{position:fixed;inset:0;background:radial-gradient(circle at 15% 10%,#1a8b58 0,#075b38 45%,#043d26 100%);z-index:10000;display:flex;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px}
+#startup-splash img{width:112px;height:112px;object-fit:contain;background:#fff;border-radius:18px;padding:8px;display:block;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+#startup-splash h1{font-family:'Playfair Display',serif;color:#ffe8a0;font-size:1.25rem}
+#startup-splash p{margin-top:8px;color:rgba(255,255,255,.72);font-size:.82rem}
 .auth-box{background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .auth-header{background:linear-gradient(145deg,#075b38,#0b7a4b);padding:28px 24px 20px;text-align:center;border-bottom:4px solid var(--gold)}
 .auth-header img{width:80px;height:80px;object-fit:contain;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto}
@@ -257,6 +257,7 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   padding:5px 4px;text-align:center;font-size:.82rem;font-weight:600;
   font-family:'DM Sans',sans-serif;background:#fff}
 .sc-inp:focus{border-color:var(--g3);outline:none;background:#f0fdf4}
+.sc-inp[readonly]{background:#f3f8f4;border-color:#b8d9c2;color:var(--g1);cursor:pointer}
 .sc-inp.over-limit{border-color:#dc2626!important;background:#fff5f5!important;color:#dc2626}
 
 /* ── BROADSHEET ── */
@@ -639,6 +640,8 @@ body.result-context-read-only .results-history-readable{display:flex}
 </style>
 </head>
 <body>
+
+<div id="startup-splash" aria-live="polite"><div><img src="first-choice-logo.jpg" alt="First Choice Standard Schools"/><h1>First Choice Standard Schools</h1><p>Opening your result portal…</p></div></div>
 
 <!-- SIDEBAR -->
 <!-- AUTH SCREEN -->
@@ -1087,13 +1090,13 @@ body.result-context-read-only .results-history-readable{display:flex}
     <div class="settings-layout">
     <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections"></aside>
     <div class="settings-grid">
-      <div class="tbl-wrap developer-only-setting" id="gemini-settings-card" style="margin-bottom:0">
-        <div class="tbl-head"><h3>AI Score Scanner (OCR)</h3></div>
-        <div style="padding:16px">
-          <div class="fg"><label>Gemini API Key</label><input class="inp" type="password" id="gemini-key-input" placeholder="AIza..."/></div>
-          <div style="font-size:.75rem;color:var(--gray);margin-top:4px">Required for scanning record books. Get free key at aistudio.google.com</div>
-          <button class="btn btn-primary btn-sm" onclick="saveGeminiKey()" style="margin-top:10px">Save API Key</button>
-        </div>
+      <div class="tbl-wrap" id="ai-usage-settings-card" style="margin-bottom:0">
+        <div class="tbl-head"><h3>AI Score Scanner &amp; Usage</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
+        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-progress" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div><div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div></div><div id="ai-usage-metrics" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><div id="ai-credit-request-status" style="margin-top:12px"></div><div style="margin-top:14px"><h4 style="font-size:.82rem;color:var(--g1);margin-bottom:8px">Request AI credits</h4><p style="font-size:.72rem;color:var(--gray);margin-bottom:8px">Choose a plan. Your request will wait for developer confirmation before credits are added.</p><div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></div><div id="ai-usage-staff" style="margin-top:14px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses one AI credit. Failed, cancelled, or unapplied scans use none.</p><button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button></div>
+      </div>
+      <div class="tbl-wrap" id="ai-wallet-management-card" style="margin-bottom:0;display:none">
+        <div class="tbl-head"><h3>AI Wallet Management</h3></div>
+        <div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Reset the school allowance directly. This clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="100" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="1000" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
@@ -1267,9 +1270,12 @@ body.result-context-read-only .results-history-readable{display:flex}
               </optgroup>
               <optgroup label="Senior Secondary">
                 <option value="ss1-general">SS1 General</option>
+                <option value="ss1-science">SS1 Science</option><option value="ss1-arts">SS1 Arts</option>
+                <option value="ss1-business">SS1 Commercial / Business</option>
                 <option value="ss2-science">SS2 Science</option><option value="ss2-arts">SS2 Arts</option>
                 <option value="ss2-business">SS2 Business</option>
                 <option value="ss3-science">SS3 Science</option><option value="ss3-arts">SS3 Arts</option>
+                <option value="ss3-business">SS3 Commercial / Business</option>
               </optgroup>
             </select>
           </div>
@@ -1735,6 +1741,7 @@ function loginSuccess(user,mode){
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+  var splash=document.getElementById('startup-splash');if(splash)splash.style.display='none';
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
   document.getElementById('sb-user-name').textContent=user.full_name;
@@ -1820,7 +1827,7 @@ function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
     loginSuccess(localUserFromPayload(payload),'local');
-  }).catch(function(){clearAuthSession();showAuthScreen();});
+  }).catch(function(){clearAuthSession();var splash=document.getElementById('startup-splash');if(splash)splash.style.display='none';showAuthScreen();});
 }
 
 function setAuthMode(mode){
@@ -2179,11 +2186,6 @@ function loadRemoteSettings(options){
         CONTEXT_READ_ONLY=false;
         clearSessionCaches();
       }
-      if(byKey.gemini_key&&CURRENT_USER&&CURRENT_USER._role==='developer'){
-        window._geminiKey=byKey.gemini_key;
-        var ki=document.getElementById('gemini-key-input');
-        if(ki)ki.value=byKey.gemini_key;
-      }
       if(byKey.app_config){
         var remoteCfg={};
         try{remoteCfg=JSON.parse(byKey.app_config)||{};}catch(e){remoteCfg={};}
@@ -2380,7 +2382,7 @@ var DEFAULT_PROMOTION_TARGETS={
   jss1:'jss2',jss2:'jss3',jss3:'ss1-general',
   'ss1-general':'ss2-science',
   'ss2-science':'ss3-science','ss2-arts':'ss3-arts','ss2-business':'ss3-arts',
-  'ss3-science':'','ss3-arts':''
+  'ss3-science':'','ss3-arts':'','ss3-business':''
 };
 function escapeHtml(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
@@ -2616,6 +2618,8 @@ var CHARTS={};
 var SCORE_DRAFTS={};          // key -> values entered but not confirmed by server
 var SCORE_SAVE_TIMERS={};     // key -> debounce timer
 var SCORE_SAVE_VERSIONS={};   // key -> latest local draft version
+var SCORE_EDIT_CONFIRMED={};  // persisted score fields explicitly approved for editing
+var SCORE_CLEAR_CONFIRMED={}; // persisted score fields explicitly approved for clearing
 
 function scoreCellValue(value){
   return value===null||value===undefined?'':value;
@@ -2626,6 +2630,8 @@ function scoreDraftKey(studentId,subjectIdx){
 function clearScoreDrafts(){
   Object.keys(SCORE_SAVE_TIMERS).forEach(function(key){clearTimeout(SCORE_SAVE_TIMERS[key]);});
   SCORE_DRAFTS={};
+  SCORE_EDIT_CONFIRMED={};
+  SCORE_CLEAR_CONFIRMED={};
   SCORE_SAVE_TIMERS={};
   SCORE_SAVE_VERSIONS={};
 }
@@ -3473,16 +3479,14 @@ function openBulkStudentImport(){
 }
 function updateBulkStudentCount(){var el=document.getElementById('bulk-student-names');var count=el?(el.value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).length):0;var out=document.getElementById('bulk-count');if(out)out.textContent=count+' name'+(count===1?'':'s')+(count>30?' (maximum 30)':'');}
 function openStudentNameOCR(){
-  if(!getGeminiKey()){showToast('Add Gemini API key in Settings first','error');return;}
   var input=document.getElementById('student-name-ocr-file');if(input)input.click();
 }
 function runStudentNameOCR(evt){
-  var file=evt.target.files&&evt.target.files[0];if(!file)return;var key=getGeminiKey();var reader=new FileReader();
+  var file=evt.target.files&&evt.target.files[0];if(!file)return;var reader=new FileReader();
   reader.onload=function(e){var src=e.target.result||'';var parts=src.split(',');var mime=file.type||'image/jpeg';var prompt='Read every student name from this school class list or record-book image. Return a JSON array only, with one object per visible student: {"name":"FULL NAME"}. Do not include serial numbers, headings, totals, or other text.';showLoad('Reading student names...');
-    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime,data:parts[1]||src}}]}],generationConfig:{temperature:0.1,maxOutputTokens:2048}})})
-      .then(function(r){if(!r.ok)return r.json().then(function(x){throw new Error(x.error?x.error.message:'HTTP '+r.status);});return r.json();})
-      .then(function(data){var txt=data.candidates&&data.candidates[0]&&data.candidates[0].content.parts[0].text||'';var match=txt.match(/\[[\s\S]*\]/);if(!match)throw new Error('No names found');var rows=JSON.parse(match[0]);var names=rows.map(function(x){return typeof x==='string'?x:x.name;}).filter(Boolean);var box=document.getElementById('bulk-student-names');var current=box.value.trim();box.value=(current?current+'\n':'')+names.join('\n');updateBulkStudentCount();hideLoad();showToast(names.length+' student names extracted. Review before saving.');})
-      .catch(function(err){hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
+    requestAIScan({operation:'ocr_student_names',image_base64:parts[1]||src,mime_type:mime,prompt:prompt})
+      .then(function(data){var txt=data.text||'';var match=txt.match(/\[[\s\S]*\]/);if(!match)throw new Error('No names found');var rows=JSON.parse(match[0]);var names=rows.map(function(x){return typeof x==='string'?x:x.name;}).filter(Boolean);var box=document.getElementById('bulk-student-names');var current=box.value.trim();box.value=(current?current+'\n':'')+names.join('\n');updateBulkStudentCount();hideLoad();showToast(names.length+' student names extracted. Review before saving.');})
+      .catch(function(err){settleAIUsage('failed');hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
       .finally(function(){evt.target.value='';});
   };reader.readAsDataURL(file);
 }
@@ -3490,7 +3494,7 @@ function saveBulkStudents(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
   var box=document.getElementById('bulk-student-names');var names=(box.value||'').split(/\r?\n/).map(function(x){return x.trim().replace(/^\d+[.)-]\s*/,'');}).filter(Boolean);var unique=[];var seen={};names.forEach(function(n){var key=normName(n);if(key&&!seen[key]){seen[key]=true;unique.push(n);}});if(!unique.length){showToast('Add at least one student name.','error');return;}if(unique.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}if(!isCentralAuth()){showToast('Management access is required for student administration.','error');return;}
   var gender=document.getElementById('bulk-gender').value||'Not specified',age=document.getElementById('bulk-age').value||'';var rows=[];unique.forEach(function(name){rows.push({name:name,gender:gender,admno:generateAdmissionNumber(),house:null,age:age,photo:''});DB_STUDENTS[CLS]=DB_STUDENTS[CLS]||[];DB_STUDENTS[CLS].push(rows[rows.length-1]);});showLoad('Saving '+rows.length+' students...');
-  Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}})})).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
+  Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}})})).then(function(){return settleAIUsage('succeeded');}).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){settleAIUsage('failed');hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
 }
 function demoAvatar(name,index){
   var initials=String(name||'DP').split(/\s+/).filter(Boolean).slice(0,2).map(function(x){return x.charAt(0).toUpperCase();}).join('')||'DP';var colors=['#087f5b','#d99a00','#155e75','#7c3aed','#be123c'];var bg=colors[index%colors.length];var svg='<svg xmlns="http://www.w3.org/2000/svg" width="240" height="280" viewBox="0 0 240 280"><rect width="240" height="280" rx="24" fill="#f1f8f4"/><circle cx="120" cy="92" r="58" fill="'+bg+'" opacity=".18"/><circle cx="120" cy="92" r="42" fill="'+bg+'"/><text x="120" y="108" text-anchor="middle" font-family="Arial" font-size="32" font-weight="700" fill="white">'+initials+'</text><path d="M48 250c8-52 34-78 72-78s64 26 72 78" fill="'+bg+'" opacity=".9"/><text x="120" y="268" text-anchor="middle" font-family="Arial" font-size="11" fill="#345">DEMO PROFILE</text></svg>';return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
@@ -3532,7 +3536,7 @@ function deleteStu(id){
   hideLoad();
   showToast('Management access is required for student administration.','error');
 }
-function closeModal(id){document.getElementById(id).style.display='none';}
+function closeModal(id){if((id==='modal-ocr'||id==='modal-bulk-students')&&AI_PENDING_LEDGER_ID)settleAIUsage('failed');document.getElementById(id).style.display='none';}
 
 // ============================================================
 // SCORE ENTRY - SUBJECT CENTRIC
@@ -3579,6 +3583,9 @@ function scoreDraft(studentId,subjectIdx){
   var persisted=scorePersisted(studentId,subjectIdx);
   return Object.assign({ca1:null,ca2:null,ca3:null,exam:null},persisted,SCORE_DRAFTS[key]||{});
 }
+function scoreCorrectionKey(studentId,subjectIdx,field){return scoreDraftKey(studentId,subjectIdx)+'|'+field;}
+function scoreCorrectionApproved(studentId,subjectIdx){var prefix=scoreDraftKey(studentId,subjectIdx)+'|';return Object.keys(SCORE_EDIT_CONFIRMED).some(function(key){return key.indexOf(prefix)===0&&SCORE_EDIT_CONFIRMED[key]===true;});}
+function savedScoreInputAttr(value){return scoreCellValue(value)!==''?' readonly title="Saved score — tap to edit"':'';}
 function scoreNumber(value){
   if(value===''||value===null||value===undefined)return null;
   var number=Number(value);
@@ -3633,6 +3640,7 @@ function confirmedScoreResponse(studentId,subjectIdx,response,version){
 }
 function scoreSaveMessage(error){
   var code=error&&error.code;
+  if(code==='RESULT_SCORE_EDIT_CONFIRMATION_REQUIRED')return 'This saved score needs an intentional edit confirmation before it can change.';
   if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY')return 'Save failed — this previous or closed academic context is read-only.';
   if(code==='RESULT_TERM_NOT_ACTIVE'||code==='RESULT_CONTEXT_MISMATCH'||code==='RESULT_TERM_INVALID')return 'Save failed — not recorded: select the selected class, session and term again.';
   if(code==='RESULT_ACADEMIC_SESSION_NOT_ACTIVE'||code==='RESULT_CONTEXT_INVALID')return 'Save failed — not recorded: select the selected academic session again.';
@@ -3649,7 +3657,7 @@ function queueScoreSave(studentId,subjectIdx){
     var version=SCORE_SAVE_VERSIONS[key]||0;
     var score=scoreDraft(studentId,subjectIdx);
     scoreStatus(studentId,subjectIdx,'Saving…','var(--gold2)');
-    dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam)
+    dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam,scoreCorrectionApproved(studentId,subjectIdx))
       .then(function(response){
         return confirmedScoreResponse(studentId,subjectIdx,response,version);
       })
@@ -3690,10 +3698,10 @@ function openSheet(idx){
     html+='<div class="sheet-row" style="background:'+(rowIdx%2===0?'#fff':'#fafafa')+'">'
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
       +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"/>'
-      +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"/>'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"'+savedScoreInputAttr(sc.ca1)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"'+savedScoreInputAttr(sc.ca2)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"'+savedScoreInputAttr(sc.ca3)+' />'
+      +'<input class="sc-inp" type="number" min="0" max="'+assessment.examMark+'" value="'+scoreCellValue(sc.exam)+'" placeholder="-" data-sid="'+s.id+'" data-field="exam"'+savedScoreInputAttr(sc.exam)+' />'
       +'<span id="st-'+s.id+'" style="text-align:center;font-weight:700;font-size:.82rem;color:var(--g1)">'+(total!==''?total:'--')+'</span>'
       +'<span id="sg-'+s.id+'" style="text-align:center;font-weight:700;font-size:.78rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.g||'--')+'</span>'
       +'<span id="sr-'+s.id+'" style="text-align:center;font-size:.75rem;color:'+(total!==''?grade.c:'#aaa')+'">'+(grade.r||'--')+'</span>'
@@ -3701,6 +3709,15 @@ function openSheet(idx){
   });
   document.getElementById('sheet-rows').innerHTML=html;
   document.querySelectorAll('#sheet-rows .sc-inp').forEach(function(inp){
+    inp.addEventListener('click',function(){
+      if(!inp.hasAttribute('readonly'))return;
+      var sid=inp.getAttribute('data-sid'),field=inp.getAttribute('data-field'),correctionKey=scoreCorrectionKey(sid,idx,field);
+      if(!confirm('This score is already saved. Do you want to edit it?'))return;
+      inp.removeAttribute('readonly');
+      inp.title='Editing saved score';
+      SCORE_EDIT_CONFIRMED[correctionKey]=true;
+      inp.focus();
+    });
     inp.addEventListener('input',function(){
       var sid=inp.getAttribute('data-sid');
       var field=inp.getAttribute('data-field');
@@ -3717,6 +3734,20 @@ function openSheet(idx){
       }
       inp.classList.remove('over-limit');
       var key=scoreDraftKey(sid,idx);
+      var persisted=scorePersisted(sid,idx),previous=scoreCellValue(persisted[field]);
+      var savedValue=previous!==''&&previous!==null&&previous!==undefined;
+      var changedSavedValue=savedValue&&(raw===null||Number(previous)!==Number(raw));
+      if(changedSavedValue){
+        var correctionKey=scoreCorrectionKey(sid,idx,field);
+        if(!SCORE_EDIT_CONFIRMED[correctionKey]){
+          if(!confirm('This score is already saved. Do you want to edit it?')){inp.value=previous;scoreStatus(sid,idx,'Saved','var(--g1)');return;}
+          SCORE_EDIT_CONFIRMED[correctionKey]=true;
+        }
+        if(raw===null&&!SCORE_CLEAR_CONFIRMED[correctionKey]){
+          if(!confirm('Clear the saved '+field.toUpperCase()+' score for this student?')){inp.value=previous;scoreStatus(sid,idx,'Saved','var(--g1)');return;}
+          SCORE_CLEAR_CONFIRMED[correctionKey]=true;
+        }
+      }
       var draft=scoreDraft(sid,idx);
       draft[field]=raw;
       SCORE_DRAFTS[key]=draft;
@@ -3737,7 +3768,7 @@ function closeSheet(){
   renderScoreGrid();
 }
 
-function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
+function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam,allowCorrection){
   // Convert empty strings to null; never send NaN or a browser-only value.
   function n(v){
     if(v===''||v===null||v===undefined)return null;
@@ -3753,7 +3784,7 @@ function dbUpsertScore(studentId,subjectIdx,ca1,ca2,ca3,exam){
       subject_index:subjectIdx,
       term:TERM,
       academic_session:getActiveSession(),
-      ca1:d.ca1,ca2:d.ca2,ca3:d.ca3,exam:d.exam
+      ca1:d.ca1,ca2:d.ca2,ca3:d.ca3,exam:d.exam,allow_correction:allowCorrection===true
     });
   }
   return Promise.reject({code:'RESULT_CENTRAL_SESSION_REQUIRED'});
@@ -3770,7 +3801,7 @@ function saveDraft(){
     var version=SCORE_SAVE_VERSIONS[key];
     var score=scoreDraft(student.id,idx);
     scoreStatus(student.id,idx,'Saving…','var(--gold2)');
-    return dbUpsertScore(student.id,idx,score.ca1,score.ca2,score.ca3,score.exam)
+    return dbUpsertScore(student.id,idx,score.ca1,score.ca2,score.ca3,score.exam,scoreCorrectionApproved(student.id,idx))
       .then(function(response){
         return confirmedScoreResponse(student.id,idx,response,version);
       });
@@ -4854,10 +4885,8 @@ function renderAnalytics(){
 // ============================================================
 function renderSettings(){
   renderSettingsDashboard();
-  var geminiCard=document.getElementById('gemini-settings-card');
-  if(geminiCard)geminiCard.style.display=(CURRENT_USER&&CURRENT_USER._role==='developer')?'':'none';
+  refreshAIUsage();
   renderBillConfig();
-  var ki=document.getElementById('gemini-key-input');if(ki){var gk=getGeminiKey();if(gk){ki.value='';ki.placeholder='Saved API key loaded';ki.dataset.keyLoaded='true';}}
   var sc=getSessionCfg();
   var el=function(id){return document.getElementById(id);};
   if(el('cfg-resumption'))el('cfg-resumption').value=sc.resumption||'';
@@ -4930,11 +4959,11 @@ function saveSecondaryDepartments(){
 }
 function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
-  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
+  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','AI usage'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=card.id==='ai-wallet-management-card'||/AI Score/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
 }
-function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){var developerOnly=c.id==='gemini-settings-card';c.style.display=(c.getAttribute('data-settings-group')===tab&&(!developerOnly||CURRENT_USER&&CURRENT_USER._role==='developer'))?'':'none';});}
+function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=(c.getAttribute('data-settings-group')===tab)?'':'none';});}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
 function previewSig(){
   var name=document.getElementById('cfg-sig-name').value;
@@ -5144,13 +5173,26 @@ function applyResponsive(){
 window.addEventListener('DOMContentLoaded',function(){
   applyResponsive();
   window.addEventListener('resize',applyResponsive);
-  window.addEventListener('focus',function(){refreshPortalState();});
+  var lastHiddenAt=0,refreshScheduleTimer=0;
+  function scheduleBackgroundRefresh(){if(refreshScheduleTimer||document.hidden||!CURRENT_USER)return;refreshScheduleTimer=setTimeout(function(){refreshScheduleTimer=0;refreshPortalState();},1200);}
+  window.addEventListener('focus',function(){if(!lastHiddenAt||Date.now()-lastHiddenAt>30000)scheduleBackgroundRefresh();});
   document.addEventListener('visibilitychange',function(){
-    if(!document.hidden)refreshPortalState();
+    if(document.hidden){lastHiddenAt=Date.now();return;}
+    if(!lastHiddenAt||Date.now()-lastHiddenAt>30000)scheduleBackgroundRefresh();
   });
+  var pullStart=0,pullTriggered=false,pullBusy=false;
+  document.addEventListener('touchstart',function(event){
+    if(window.scrollY<=2&&event.touches&&event.touches[0]){pullStart=event.touches[0].clientY;pullTriggered=false;}
+  },{passive:true});
+  document.addEventListener('touchmove',function(event){
+    if(!pullStart||pullBusy||!event.touches||!event.touches[0])return;
+    var distance=event.touches[0].clientY-pullStart;
+    if(distance>78&&!pullTriggered){pullTriggered=true;pullBusy=true;showToast('Refreshing portal…');Promise.resolve(refreshPortalState({force:true})).finally(function(){setTimeout(function(){pullBusy=false;},700);});}
+  },{passive:true});
+  document.addEventListener('touchend',function(){pullStart=0;},{passive:true});
   setInterval(function(){
-    if(CURRENT_USER&&!document.hidden)refreshPortalState();
-  },60000);
+    if(CURRENT_USER&&!document.hidden&&document.hasFocus())refreshPortalState();
+  },120000);
   // Sensitive Result data is loaded only after a trusted session is present.
   // The legacy compatibility path still performs its own authenticated reads.
   console.log('WTS Result Portal ready');
@@ -5184,6 +5226,7 @@ var OCR_IDX=-1;
 var OCR_MATCHES=[];
 var OCR_IMG_B64='';
 var OCR_IMG_MIME='image/jpeg';
+var AI_PENDING_LEDGER_ID='';
 
 
 function forceSyncSettings(){
@@ -5198,26 +5241,56 @@ function forceSyncSettings(){
       showToast('Sync failed - check connection','error');
     });
 }
-function saveGeminiKey(){
-  if(!CURRENT_USER||CURRENT_USER._role!=='developer'){showToast('Only the developer account can configure the Gemini provider.','error');return;}
-  var input=document.getElementById('gemini-key-input');
-  var key=input?input.value.trim():'';
-  if(!key){showToast('Enter a Gemini API key first.','error');return;}
-  window._geminiKey=key;
-  try{sessionStorage.setItem('wts_gemini_key',key);}catch(e){}
-  if(input){input.value='';input.placeholder='Saved API key loaded';input.dataset.keyLoaded='true';}
-  showToast('OCR provider key loaded for this session.');
+function requestAIScan(payload){
+  payload.idempotency_key='ai-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  return fetch('/api/ai-ocr',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify(payload),cache:'no-store'})
+    .then(function(res){return res.text().then(function(raw){var data={};try{data=raw?JSON.parse(raw):{};}catch(e){data={};}if(!res.ok||data.ok===false){throw data;}return data;});})
+    .then(function(data){if(data.ledger_id)AI_PENDING_LEDGER_ID=data.ledger_id;refreshAIUsage();return data;})
+    .catch(function(error){if(error&&error.code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');throw new Error((error&&error.message)||'AI scanner is unavailable.');});
 }
-function getGeminiKey(){
-  if(!CURRENT_USER||CURRENT_USER._role!=='developer')return '';
-  if(window._geminiKey)return window._geminiKey;
-  try{window._geminiKey=sessionStorage.getItem('wts_gemini_key')||'';}catch(e){}
-  return window._geminiKey||'';
+function settleAIUsage(status){
+  var ledger=AI_PENDING_LEDGER_ID;if(!ledger)return Promise.resolve();
+  return fetch('/api/ai-settle',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify({ledger_id:ledger,status:status}),cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});}).then(function(){if(AI_PENDING_LEDGER_ID===ledger)AI_PENDING_LEDGER_ID='';refreshAIUsage();});
+}
+var AI_CREDIT_PACKS=[[5000,1000],[10000,2000],[15000,3000],[20000,4000]];
+function renderAICreditPacks(){
+  var root=document.getElementById('ai-credit-pack-options');if(!root||root.childElementCount)return;
+  root.innerHTML=AI_CREDIT_PACKS.map(function(pack){return '<button class="btn btn-outline btn-sm" type="button" onclick="requestAICreditPack('+pack[0]+','+pack[1]+')" style="text-align:left;padding:10px"><strong>₦'+pack[0].toLocaleString()+'</strong><br><small>'+pack[1].toLocaleString()+' AI credits</small></button>';}).join('');
+}
+function requestAICreditPack(amount,credits){
+  if(!isCentralAuth()){showToast('Sign in before requesting AI credits.','error');return;}
+  var status=document.getElementById('ai-credit-request-status');if(status)status.innerHTML='<span class="badge badge-gold">Sending request…</span>';
+  fetch('/api/ai-credit-request',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify({amount_naira:amount,credits:credits}),cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});}).then(function(){showToast('Request sent. Waiting for developer confirmation.');refreshAIUsage();}).catch(function(error){if(error&&error.code==='AI_PACK_REQUEST_PENDING')showToast('A credit request is already waiting for confirmation.','error');else showToast((error&&error.message)||'Could not send credit request.','error');refreshAIUsage();});
+}
+function refreshAIUsage(){
+  if(!isCentralAuth())return;
+  renderAICreditPacks();
+  fetch('/api/ai-usage',{credentials:'same-origin',headers:getAuthHeaders(),cache:'no-store'}).then(function(r){return r.json();}).then(function(data){
+    if(!data||!data.ok)return;
+    var w=data.wallet||{},remaining=Math.max(0,Number(w.free_credits)-Number(w.free_credits_used)+Number(w.paid_credits)-Number(w.paid_credits_used));
+    var used=Number(w.free_credits_used)+Number(w.paid_credits_used),total=Number(w.free_credits)+Number(w.paid_credits);var summary=document.getElementById('ai-usage-summary');
+    if(summary)summary.textContent='School AI balance: '+remaining+' credits remaining ('+used+' used of '+total+'). '+(remaining?'All authorised teachers share this balance.':'AI scanning is paused; contact the developer to renew.');
+    var percent=total>0?Math.max(0,Math.min(100,Math.round((remaining/total)*100))):0;var bar=document.getElementById('ai-usage-bar');var pct=document.getElementById('ai-usage-percent');var rem=document.getElementById('ai-usage-remaining');if(bar){bar.style.width=percent+'%';bar.style.background=percent<=10?'#dc2626':percent<=25?'#d97706':'linear-gradient(90deg,#087f5b,#55c98b)';}if(pct)pct.textContent=percent+'%';if(rem)rem.textContent=remaining+' credits remaining of '+total;
+    var metrics=document.getElementById('ai-usage-metrics');if(metrics)metrics.innerHTML='<span class="badge badge-green">'+Number(data.summary&&data.summary.total_scans||0)+' successful scans</span><span class="badge">'+Number(data.summary&&data.summary.failed_scans||0)+' failed</span><span class="badge badge-gold">'+used+' credits used</span>';
+  var management=document.getElementById('ai-wallet-management-card');if(management){var allowed=CURRENT_USER&&CURRENT_USER._role==='admin';management.style.display=allowed?'':'none';var freeInput=document.getElementById('ai-reset-free');var paidInput=document.getElementById('ai-reset-paid');if(freeInput&&document.activeElement!==freeInput)freeInput.value=Number(w.free_credits||0);if(paidInput&&document.activeElement!==paidInput)paidInput.value=Number(w.paid_credits||0);}
+    var requestStatus=document.getElementById('ai-credit-request-status');var latest=(data.requests||[])[0];if(requestStatus&&latest){var label=latest.status==='approved'?'Approved — credits will appear after confirmation is completed':latest.status==='rejected'?'Declined — contact the developer for help':'Waiting for developer confirmation';requestStatus.innerHTML='<div style="padding:9px 10px;border-radius:9px;background:'+(latest.status==='approved'?'#effcf3':latest.status==='rejected'?'#fff5f5':'#fff9e8')+';font-size:.74rem"><strong>'+label+'</strong><br><span style="color:var(--gray)">₦'+Number(latest.amount_naira).toLocaleString()+' · '+Number(latest.credits_requested).toLocaleString()+' credits requested</span></div>';}else if(requestStatus)requestStatus.innerHTML='';
+    var staff=document.getElementById('ai-usage-staff');if(staff)staff.innerHTML='<small style="color:var(--gray);font-weight:700">Usage by staff</small><div style="margin-top:6px">'+(data.summary&&data.summary.by_staff||[]).map(function(row){return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:5px 0;border-bottom:1px solid var(--border)"><span>'+escapeHtml(row.name)+'</span><span>'+row.scans+' scans · '+row.failed+' failed</span></div>';}).join('')+'</div>';
+  }).catch(function(){});
+}
+function resetAIWallet(){
+  if(!CURRENT_USER||CURRENT_USER._role!=='admin'){showToast('Only the School Administrator can reset the AI wallet.','error');return;}
+  var free=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-free')||{}).value||0)));var paid=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-paid')||{}).value||0)));
+  if(!confirm('Reset the shared AI wallet to '+(free+paid)+' total credits and clear its used counters?'))return;
+  fetch('/api/ai-credit-reset',{method:'POST',credentials:'same-origin',headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),body:JSON.stringify({free_credits:free,paid_credits:paid}),cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});}).then(function(){showToast('AI wallet reset and synced for all authorised staff.');refreshAIUsage();}).catch(function(error){showToast((error&&error.message)||'Could not reset the AI wallet.','error');});
+}
+function contactDeveloperForAI(){
+  var school=((getCfg()||{}).school||{}).name||'our school';
+  var message='Hello, I need help with AI credits for '+school+'.';
+  window.location.href='https://wa.me/2348165701129?text='+encodeURIComponent(message);
 }
 
 function openOCRScanner(){
-  var key=getGeminiKey();
-  if(!key){showToast('Add Gemini API key in Settings first','error');return;}
+  if(!CURRENT_USER){showToast('Sign in before using the AI scanner.','error');return;}
   OCR_IDX=currentSheetIdx;
   var subjs=subjects();
   var el=document.getElementById('ocr-subject-name');
@@ -5227,6 +5300,7 @@ function openOCRScanner(){
 }
 
 function resetOCR(){
+  if(AI_PENDING_LEDGER_ID)settleAIUsage('failed');
   document.getElementById('ocr-step1').style.display='block';
   document.getElementById('ocr-step2').style.display='none';
   document.getElementById('ocr-preview-wrap').style.display='none';
@@ -5271,8 +5345,7 @@ function handleOCRImage(evt){
 }
 
 function runOCR(){
-  var key=getGeminiKey();
-  if(!key||!OCR_IMG_B64)return;
+  if(!OCR_IMG_B64)return;
   document.getElementById('ocr-preview-wrap').style.display='none';
   document.getElementById('ocr-loading').style.display='block';
   var students=DB_STUDENTS[CLS]||[];var assessment=getAssessmentConfig();var caDescription=assessment.caMarks.slice(0,assessment.caCount).map(function(mark,i){return 'CA'+(i+1)+' (out of '+mark+')';}).join(', ');
@@ -5285,29 +5358,14 @@ function runOCR(){
     +'Each item must be: {"name":"STUDENT FULL NAME AS WRITTEN",'+assessment.caMarks.slice(0,assessment.caCount).map(function(_,i){return '"ca'+(i+1)+'":number_or_null';}).join(',')+',"exam":number_or_null} '
     +'If a score cell is empty, crossed out, or unreadable use null. '
     +'Include every student row visible. Start your response with [ and end with ].';
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      contents:[{parts:[{text:prompt},{inline_data:{mime_type:OCR_IMG_MIME,data:OCR_IMG_B64}}]}],
-      generationConfig:{temperature:0.1,maxOutputTokens:2048}
-    })
-  })
-  .then(function(r){
-    if(!r.ok){return r.json().then(function(e){throw new Error(e.error?e.error.message:'HTTP '+r.status);});}
-    return r.json();
-  })
+  requestAIScan({operation:'ocr_scores',image_base64:OCR_IMG_B64,mime_type:OCR_IMG_MIME,prompt:prompt})
   .then(function(data){
     document.getElementById('ocr-loading').style.display='none';
-    if(data.error){
-      showToast('Gemini error: '+data.error.message,'error');
-      document.getElementById('ocr-preview-wrap').style.display='block';
-      return;
-    }
     var txt='';
-    try{txt=data.candidates[0].content.parts[0].text;}
+    try{txt=data.text||data.candidates[0].content.parts[0].text;}
     catch(e){
-      showToast('No response from Gemini. Check API key.','error');
+      showToast('No response from the AI scanner.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5324,6 +5382,7 @@ function runOCR(){
     if(!jsonStr&&txt.trim().startsWith('['))jsonStr=txt.trim();
     if(!jsonStr){
       showToast('AI responded but could not find scores in image. Ensure photo shows names and score columns clearly.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5331,17 +5390,20 @@ function runOCR(){
     try{rows=JSON.parse(jsonStr);}
     catch(e){
       showToast('Could not read the data. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
     if(!rows.length){
       showToast('No scores found in image. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
     buildOCRPreview(rows,students);
   })
   .catch(function(err){
+    settleAIUsage('failed');
     document.getElementById('ocr-loading').style.display='none';
     document.getElementById('ocr-preview-wrap').style.display='block';
     showToast('Error: '+(err.message||'Network error. Check connection.'),'error');
@@ -5399,6 +5461,15 @@ function updateOCRMatch(el){
 function applyOCRScores(){
   var assessment=getAssessmentConfig();
   var applied=0;
+  var ocrConflicts=[];
+  OCR_MATCHES.forEach(function(m){
+    if(!m.student)return;
+    var existing=scorePersisted(m.student.id,OCR_IDX);
+    assessment.caMarks.slice(0,assessment.caCount).forEach(function(mark,ci){var field='ca'+(ci+1);if(m[field]!=null&&scoreCellValue(existing[field])!==''&&Number(existing[field])!==Number(m[field]))ocrConflicts.push(m.student.name+' '+field.toUpperCase());});
+    if(m.exam!=null&&scoreCellValue(existing.exam)!==''&&Number(existing.exam)!==Number(m.exam))ocrConflicts.push(m.student.name+' Exam');
+  });
+  if(ocrConflicts.length&&!confirm('OCR will replace already-saved scores for '+ocrConflicts.length+' field(s). Do you want to continue?')){settleAIUsage('failed');showToast('OCR was not applied; saved scores were protected.','error');return;}
+  if(ocrConflicts.length){OCR_MATCHES.forEach(function(m){if(!m.student)return;var existing=scorePersisted(m.student.id,OCR_IDX);['ca1','ca2','ca3','exam'].forEach(function(field){if(m[field]!=null&&scoreCellValue(existing[field])!=='')SCORE_EDIT_CONFIRMED[scoreCorrectionKey(m.student.id,OCR_IDX,field)]=true;});});}
   OCR_MATCHES.forEach(function(m){
     if(!m.student)return;
     var sid=m.student.id;
@@ -5415,12 +5486,13 @@ function applyOCRScores(){
   Promise.all(students.map(function(s){
     var sc=(DB_SCORES[s.id]||{})[idx]||{ca1:'',ca2:'',ca3:'',exam:''};
     if(sc.ca1===''&&sc.ca2===''&&sc.ca3===''&&sc.exam==='')return Promise.resolve();
-    return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam);
-  })).then(function(){
+    return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam,scoreCorrectionApproved(s.id,idx));
+  })).then(function(){return settleAIUsage('succeeded');}).then(function(){
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast(applied+' students scored via OCR scan');
   }).catch(function(){
+    settleAIUsage('failed');
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast('Scores applied. Tap Save Draft to sync.','error');

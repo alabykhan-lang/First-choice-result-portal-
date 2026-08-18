@@ -27,7 +27,7 @@ public class MainActivity extends Activity {
     // Keep the native app on the current print/navigation implementation.
     // Changing this marker also prevents WebView from reusing the old portal
     // document that shipped with the previous Android print behavior.
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_a4print";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_gallery1";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;
@@ -163,13 +163,18 @@ public class MainActivity extends Activity {
         webView.saveState(outState);
     }
 
+    private void clearFileChooser(Uri[] result) {
+        if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(result);
+        fileUploadCallback = null;
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
-            Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
-            fileUploadCallback.onReceiveValue(result);
-            fileUploadCallback = null;
+            Uri[] result;
+            result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            clearFileChooser(result);
         }
     }
 
