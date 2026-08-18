@@ -9,8 +9,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Build;
 import android.graphics.Color;
-import android.provider.MediaStore;
-import android.content.ContentValues;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -24,19 +22,16 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.content.pm.PackageManager;
 
 public class MainActivity extends Activity {
     // Keep the native app on the current print/navigation implementation.
     // Changing this marker also prevents WebView from reusing the old portal
     // document that shipped with the previous Android print behavior.
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_camera4";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_gallery1";
     private static final int FILE_PICKER_REQUEST = 1001;
-    private static final int CAMERA_PERMISSION_REQUEST = 1002;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
-    private Uri cameraOutputUri;
     private boolean printInProgress = false;
     private boolean reportCardPrintInProgress = false;
 
@@ -107,21 +102,12 @@ public class MainActivity extends Activity {
                     fileUploadCallback.onReceiveValue(null);
                 }
                 fileUploadCallback = callback;
-                if (params.isCaptureEnabled()) {
-                    if (needsCameraPermission()) {
-                        requestPermissions(cameraPermissions(), CAMERA_PERMISSION_REQUEST);
-                    } else {
-                        launchCameraCapture();
-                    }
-                    return true;
-                } else {
-                    Intent intent = params.createIntent();
-                    try {
-                        startActivityForResult(intent, FILE_PICKER_REQUEST);
-                    } catch (Exception ex) {
-                        fileUploadCallback = null;
-                        return false;
-                    }
+                Intent intent = params.createIntent();
+                try {
+                    startActivityForResult(intent, FILE_PICKER_REQUEST);
+                } catch (Exception ex) {
+                    fileUploadCallback = null;
+                    return false;
                 }
                 return true;
             }
@@ -177,77 +163,6 @@ public class MainActivity extends Activity {
         webView.saveState(outState);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != CAMERA_PERMISSION_REQUEST) return;
-        boolean granted = grantResults.length > 0;
-        for (int result : grantResults) {
-            granted = granted && result == PackageManager.PERMISSION_GRANTED;
-        }
-        if (!granted) {
-            clearFileChooser(null);
-            return;
-        }
-        launchCameraCapture();
-    }
-
-    private boolean needsCameraPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
-        if (checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return true;
-        return Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
-            && checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
-    }
-
-    private String[] cameraPermissions() {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            return new String[] { android.Manifest.permission.CAMERA, android.Manifest.permission.WRITE_EXTERNAL_STORAGE };
-        }
-        return new String[] { android.Manifest.permission.CAMERA };
-    }
-
-    private void launchCameraCapture() {
-        if (fileUploadCallback == null) return;
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (intent.resolveActivity(getPackageManager()) == null) {
-            clearFileChooser(null);
-            return;
-        }
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, "first-choice-camera-" + System.currentTimeMillis() + ".jpg");
-        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/First Choice");
-            values.put(MediaStore.Images.Media.IS_PENDING, 1);
-        }
-        cameraOutputUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-        if (cameraOutputUri == null) {
-            clearFileChooser(null);
-            return;
-        }
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
-        // Some Samsung/Android camera implementations ignore the grant carried
-        // only by EXTRA_OUTPUT. Grant the resolved camera activity explicitly
-        // so it can write the MediaStore URI and return it to the WebView.
-        android.content.pm.ResolveInfo cameraInfo = getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
-        if (cameraInfo != null && cameraInfo.activityInfo != null) {
-            grantUriPermission(
-                cameraInfo.activityInfo.packageName,
-                cameraOutputUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            );
-        }
-        try {
-            startActivityForResult(intent, FILE_PICKER_REQUEST);
-        } catch (Exception ex) {
-            getContentResolver().delete(cameraOutputUri, null, null);
-            cameraOutputUri = null;
-            clearFileChooser(null);
-        }
-    }
-
     private void clearFileChooser(Uri[] result) {
         if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(result);
         fileUploadCallback = null;
@@ -258,22 +173,7 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
             Uri[] result;
-            if (cameraOutputUri != null) {
-                if (resultCode == RESULT_OK) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        ContentValues values = new ContentValues();
-                        values.put(MediaStore.Images.Media.IS_PENDING, 0);
-                        getContentResolver().update(cameraOutputUri, values, null, null);
-                    }
-                    result = new Uri[] { cameraOutputUri };
-                } else {
-                    getContentResolver().delete(cameraOutputUri, null, null);
-                    result = null;
-                }
-                cameraOutputUri = null;
-            } else {
-                result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
-            }
+            result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             clearFileChooser(result);
         }
     }
