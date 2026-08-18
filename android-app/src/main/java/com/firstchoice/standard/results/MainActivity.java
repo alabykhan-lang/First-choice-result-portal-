@@ -10,9 +10,7 @@ import android.os.Environment;
 import android.os.Build;
 import android.graphics.Color;
 import android.provider.MediaStore;
-import androidx.core.content.FileProvider;
-import java.io.File;
-import java.util.UUID;
+import android.content.ContentValues;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -114,12 +112,21 @@ public class MainActivity extends Activity {
                         fileUploadCallback = null;
                         return false;
                     }
-                    File outputFile = new File(getCacheDir(), "portal-camera-" + UUID.randomUUID() + ".jpg");
-                    cameraOutputUri = FileProvider.getUriForFile(
-                        MainActivity.this,
-                        getPackageName() + ".fileprovider",
-                        outputFile
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Images.Media.DISPLAY_NAME, "first-choice-camera-" + System.currentTimeMillis() + ".jpg");
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/First Choice");
+                        values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                    }
+                    cameraOutputUri = getContentResolver().insert(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        values
                     );
+                    if (cameraOutputUri == null) {
+                        fileUploadCallback = null;
+                        return false;
+                    }
                     intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                     intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
@@ -129,6 +136,9 @@ public class MainActivity extends Activity {
                 try {
                     startActivityForResult(intent, FILE_PICKER_REQUEST);
                 } catch (Exception ex) {
+                    if (cameraOutputUri != null) {
+                        getContentResolver().delete(cameraOutputUri, null, null);
+                    }
                     fileUploadCallback = null;
                     cameraOutputUri = null;
                     return false;
@@ -193,7 +203,17 @@ public class MainActivity extends Activity {
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
             Uri[] result;
             if (cameraOutputUri != null) {
-                result = resultCode == RESULT_OK ? new Uri[] { cameraOutputUri } : null;
+                if (resultCode == RESULT_OK) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                        getContentResolver().update(cameraOutputUri, values, null, null);
+                    }
+                    result = new Uri[] { cameraOutputUri };
+                } else {
+                    getContentResolver().delete(cameraOutputUri, null, null);
+                    result = null;
+                }
                 cameraOutputUri = null;
             } else {
                 result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
