@@ -9,6 +9,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Build;
 import android.graphics.Color;
+import android.provider.MediaStore;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.util.UUID;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -32,6 +36,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
+    private Uri cameraOutputUri;
     private boolean printInProgress = false;
     private boolean reportCardPrintInProgress = false;
 
@@ -102,11 +107,30 @@ public class MainActivity extends Activity {
                     fileUploadCallback.onReceiveValue(null);
                 }
                 fileUploadCallback = callback;
-                Intent intent = params.createIntent();
+                Intent intent;
+                if (params.isCaptureEnabled()) {
+                    intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        fileUploadCallback = null;
+                        return false;
+                    }
+                    File outputFile = new File(getCacheDir(), "portal-camera-" + UUID.randomUUID() + ".jpg");
+                    cameraOutputUri = FileProvider.getUriForFile(
+                        MainActivity.this,
+                        getPackageName() + ".fileprovider",
+                        outputFile
+                    );
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                    intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
+                } else {
+                    intent = params.createIntent();
+                }
                 try {
                     startActivityForResult(intent, FILE_PICKER_REQUEST);
                 } catch (Exception ex) {
                     fileUploadCallback = null;
+                    cameraOutputUri = null;
                     return false;
                 }
                 return true;
@@ -167,7 +191,13 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
-            Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            Uri[] result;
+            if (cameraOutputUri != null) {
+                result = resultCode == RESULT_OK ? new Uri[] { cameraOutputUri } : null;
+                cameraOutputUri = null;
+            } else {
+                result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            }
             fileUploadCallback.onReceiveValue(result);
             fileUploadCallback = null;
         }
