@@ -30,7 +30,7 @@ public class MainActivity extends Activity {
     // Keep the native app on the current print/navigation implementation.
     // Changing this marker also prevents WebView from reusing the old portal
     // document that shipped with the previous Android print behavior.
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_camera3";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_camera4";
     private static final int FILE_PICKER_REQUEST = 1001;
     private static final int CAMERA_PERMISSION_REQUEST = 1002;
 
