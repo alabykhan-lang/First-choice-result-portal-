@@ -30,7 +30,7 @@ public class MainActivity extends Activity {
     // Keep the native app on the current print/navigation implementation.
     // Changing this marker also prevents WebView from reusing the old portal
     // document that shipped with the previous Android print behavior.
-    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_a4print";
+    private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260818_camera3";
     private static final int FILE_PICKER_REQUEST = 1001;
     private static final int CAMERA_PERMISSION_REQUEST = 1002;
 
@@ -228,6 +228,17 @@ public class MainActivity extends Activity {
         intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
+        // Some Samsung/Android camera implementations ignore the grant carried
+        // only by EXTRA_OUTPUT. Grant the resolved camera activity explicitly
+        // so it can write the MediaStore URI and return it to the WebView.
+        android.content.pm.ResolveInfo cameraInfo = getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        if (cameraInfo != null && cameraInfo.activityInfo != null) {
+            grantUriPermission(
+                cameraInfo.activityInfo.packageName,
+                cameraOutputUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            );
+        }
         try {
             startActivityForResult(intent, FILE_PICKER_REQUEST);
         } catch (Exception ex) {
