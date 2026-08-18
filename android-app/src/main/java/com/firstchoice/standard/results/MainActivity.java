@@ -24,6 +24,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.content.pm.PackageManager;
 
 public class MainActivity extends Activity {
     // Keep the native app on the current print/navigation implementation.
@@ -31,6 +32,7 @@ public class MainActivity extends Activity {
     // document that shipped with the previous Android print behavior.
     private static final String PORTAL_URL = "https://first-choice-result-portal.vercel.app/portal_core.html?v=20260813_a4print";
     private static final int FILE_PICKER_REQUEST = 1001;
+    private static final int CAMERA_PERMISSION_REQUEST = 1002;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
@@ -105,43 +107,21 @@ public class MainActivity extends Activity {
                     fileUploadCallback.onReceiveValue(null);
                 }
                 fileUploadCallback = callback;
-                Intent intent;
                 if (params.isCaptureEnabled()) {
-                    intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    if (intent.resolveActivity(getPackageManager()) == null) {
-                        fileUploadCallback = null;
-                        return false;
+                    if (needsCameraPermission()) {
+                        requestPermissions(cameraPermissions(), CAMERA_PERMISSION_REQUEST);
+                    } else {
+                        launchCameraCapture();
                     }
-                    ContentValues values = new ContentValues();
-                    values.put(MediaStore.Images.Media.DISPLAY_NAME, "first-choice-camera-" + System.currentTimeMillis() + ".jpg");
-                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/First Choice");
-                        values.put(MediaStore.Images.Media.IS_PENDING, 1);
-                    }
-                    cameraOutputUri = getContentResolver().insert(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        values
-                    );
-                    if (cameraOutputUri == null) {
-                        fileUploadCallback = null;
-                        return false;
-                    }
-                    intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
-                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                    intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
+                    return true;
                 } else {
-                    intent = params.createIntent();
-                }
-                try {
-                    startActivityForResult(intent, FILE_PICKER_REQUEST);
-                } catch (Exception ex) {
-                    if (cameraOutputUri != null) {
-                        getContentResolver().delete(cameraOutputUri, null, null);
+                    Intent intent = params.createIntent();
+                    try {
+                        startActivityForResult(intent, FILE_PICKER_REQUEST);
+                    } catch (Exception ex) {
+                        fileUploadCallback = null;
+                        return false;
                     }
-                    fileUploadCallback = null;
-                    cameraOutputUri = null;
-                    return false;
                 }
                 return true;
             }
@@ -198,6 +178,71 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != CAMERA_PERMISSION_REQUEST) return;
+        boolean granted = grantResults.length > 0;
+        for (int result : grantResults) {
+            granted = granted && result == PackageManager.PERMISSION_GRANTED;
+        }
+        if (!granted) {
+            clearFileChooser(null);
+            return;
+        }
+        launchCameraCapture();
+    }
+
+    private boolean needsCameraPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return true;
+        return Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+            && checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
+    }
+
+    private String[] cameraPermissions() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            return new String[] { android.Manifest.permission.CAMERA, android.Manifest.permission.WRITE_EXTERNAL_STORAGE };
+        }
+        return new String[] { android.Manifest.permission.CAMERA };
+    }
+
+    private void launchCameraCapture() {
+        if (fileUploadCallback == null) return;
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (intent.resolveActivity(getPackageManager()) == null) {
+            clearFileChooser(null);
+            return;
+        }
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, "first-choice-camera-" + System.currentTimeMillis() + ".jpg");
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/First Choice");
+            values.put(MediaStore.Images.Media.IS_PENDING, 1);
+        }
+        cameraOutputUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+        if (cameraOutputUri == null) {
+            clearFileChooser(null);
+            return;
+        }
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraOutputUri);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.setClipData(android.content.ClipData.newRawUri("camera-output", cameraOutputUri));
+        try {
+            startActivityForResult(intent, FILE_PICKER_REQUEST);
+        } catch (Exception ex) {
+            getContentResolver().delete(cameraOutputUri, null, null);
+            cameraOutputUri = null;
+            clearFileChooser(null);
+        }
+    }
+
+    private void clearFileChooser(Uri[] result) {
+        if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(result);
+        fileUploadCallback = null;
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
@@ -218,8 +263,7 @@ public class MainActivity extends Activity {
             } else {
                 result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             }
-            fileUploadCallback.onReceiveValue(result);
-            fileUploadCallback = null;
+            clearFileChooser(result);
         }
     }
 
